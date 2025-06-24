@@ -1,8 +1,21 @@
+using Lycerius.DCUWeather.Services;
+using Lycerius.DCUWeather.Services.OpenWeather;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
+
+builder.Services.AddControllers();
+
+builder.Services.AddHttpClient("openWeatherClient", client =>
+{
+    client.BaseAddress = new Uri("https://api.openweathermap.org/");
+});
+
+
+builder.Services.AddScoped<IWeatherProvider, OpenWeatherWeatherProvider>();
 
 var app = builder.Build();
 
@@ -12,6 +25,8 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi();
 }
 
+
+app.MapControllers();
 
 
 app.Run();
