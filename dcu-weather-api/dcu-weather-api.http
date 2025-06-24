@@ -1,0 +1,6 @@
+@dcu_weather_api_HostAddress = http://localhost:5291
+
+GET {{dcu_weather_api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
