@@ -1,3 +1,4 @@
+using Lycerius.DCUWeather.Common;
 using Lycerius.DCUWeather.Common.Models;
 using Lycerius.DCUWeather.Services.OpenWeather.Models;
 
@@ -16,7 +17,7 @@ public class OpenWeatherWeatherProvider : IWeatherProvider
         _temperatureUnitsConverter = temperatureUnitsConverter;
     }
 
-    public async Task<CurrentWeather?> GetCurrentWeatherForZipCode(string zip, string tempUnit)
+    public async Task<CurrentWeather?> GetCurrentWeatherForZipCode(string zip, TemperatureUnit tempUnit)
     {
         var weatherResult = await GetOpenWeatherResultForZipCode(zip);
 
@@ -30,7 +31,7 @@ public class OpenWeatherWeatherProvider : IWeatherProvider
         };
     }
 
-    public async Task<AverageWeather?> GetAverageWeatherForZipCode(string zip, int timePeriod, string tempUnit)
+    public async Task<AverageWeather?> GetAverageWeatherForZipCode(string zip, int timePeriod, TemperatureUnit tempUnit)
     {
         var weatherResult = await GetOpenWeatherResultForZipCode(zip);
 

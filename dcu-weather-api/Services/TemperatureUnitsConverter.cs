@@ -1,3 +1,5 @@
+using Lycerius.DCUWeather.Common;
+
 namespace Lycerius.DCUWeather.Services;
 
 /// <summary>
@@ -12,13 +14,13 @@ public class TemperatureUnitsConverter
     /// <param name="outputUnits">The unit to convert the temperature to</param>
     /// <returns>The temperature in the specified units</returns>
     /// <exception cref="Exception">If the specified outputUnits are not supported</exception>
-    public double ConvertKelvinToUnits(double kelvin, string outputUnits)
+    public double ConvertKelvinToUnits(double kelvin, TemperatureUnit outputUnits)
     {
         switch (outputUnits)
         {
-            case "F":
+            case TemperatureUnit.F:
                 return (kelvin - 273.15) * (9 / 5) + 32;
-            case "C":
+            case TemperatureUnit.C:
                 return kelvin - 273.15;
             default:
                 throw new Exception($"Unknown output units provided {outputUnits}");

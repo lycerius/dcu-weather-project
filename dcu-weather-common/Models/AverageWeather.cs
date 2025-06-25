@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace Lycerius.DCUWeather.Common.Models;
 
 /// <summary>
@@ -13,7 +15,8 @@ public record AverageWeather
     /// <summary>
     /// The units the temperature is given in
     /// </summary>
-    public required string Unit { get; set; }
+    [JsonConverter(typeof(JsonStringEnumConverter))]
+    public required TemperatureUnit Unit { get; set; }
 
     /// <summary>
     /// The latitude of the area

@@ -1,3 +1,4 @@
+using Lycerius.DCUWeather.Common;
 using Lycerius.DCUWeather.Common.Models;
 using Lycerius.DCUWeather.Services;
 using Microsoft.AspNetCore.Mvc;
@@ -22,7 +23,7 @@ public class WeatherController : ControllerBase
     /// <param name="units">The units the temperatures should be in</param>
     /// <returns></returns>
     [HttpGet("Current/{zipCode}")]
-    public async Task<ActionResult<CurrentWeather>> GetCurrentWeather(string zipCode, string units)
+    public async Task<ActionResult<CurrentWeather>> GetCurrentWeather(string zipCode, TemperatureUnit units)
     {
         try
         {
@@ -39,7 +40,7 @@ public class WeatherController : ControllerBase
     }
 
     [HttpGet("Average/{zipCode}")]
-    public async Task<ActionResult<AverageWeather>> GetAverageWeather(string zipCode, string timePeriod, string units)
+    public async Task<ActionResult<AverageWeather>> GetAverageWeather(string zipCode, string timePeriod, TemperatureUnit units)
     {
         try
         {
