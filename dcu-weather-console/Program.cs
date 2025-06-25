@@ -25,8 +25,13 @@ public class Program
         public required string ZipCode { get; set; }
         [Option(Default = OutputFormat.TEXT)]
         public required OutputFormat Output { get; set; }
-        [Option(Required = true, HelpText = "The temperature units the weather should be in")]
-        public required TemperatureUnit Units { get; set; }
+        [Option(Required = true, HelpText = "The temperature units the weather should be in (fahrenheit|celsius)")]
+        public required string Units { get; set; }
+
+        public TemperatureUnit TemperatureUnit
+        {
+            get => ConvertUnitInputOptionToTemperatureUnit(Units);
+        }
     }
 
     [Verb("get-current-weather", HelpText = "Gets the current weather")]
@@ -50,14 +55,14 @@ public class Program
     private static async Task GetCurrentWeather(GetCurrentWeatherOptions options)
     {
         var dcuWeatherService = GenerateService(options);
-        var results = await dcuWeatherService.GetCurrentWeatherForZipCode(options.ZipCode, options.Units);
+        var results = await dcuWeatherService.GetCurrentWeatherForZipCode(options.ZipCode, options.TemperatureUnit);
         PrintResultsInSpecifiedOutput(results, options);
     }
 
     private static async Task GetAverageWeather(GetAverageWeatherOptions options)
     {
         var dcuWeatherService = GenerateService(options);
-        var results = await dcuWeatherService.GetAverageWeather(options.ZipCode, options.Units, options.TimePeriod);
+        var results = await dcuWeatherService.GetAverageWeather(options.ZipCode, options.TemperatureUnit, options.TimePeriod);
         PrintResultsInSpecifiedOutput(results, options);
     }
 
@@ -88,5 +93,15 @@ public class Program
                 Console.WriteLine(toPrint?.ToString());
                 break;
         }
+    }
+
+    private static TemperatureUnit ConvertUnitInputOptionToTemperatureUnit(string inputOption)
+    {
+        return inputOption?.ToLower() switch
+        {
+            "fahrenheit" => TemperatureUnit.F,
+            "celsius" => TemperatureUnit.C,
+            _ => throw new NotSupportedException($"The given input temperature unit is not supported: {inputOption}")
+        };
     }
 }
