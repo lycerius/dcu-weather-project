@@ -10,5 +10,5 @@ public interface IWeatherProvider
     /// <param name="zip">The zipcode to fetch weather for</param>
     /// <param name="tempUnit">The temperature unit to give temperatures in</param>
     /// <returns></returns>
-    Task<CurrentWeather> GetCurrentWeatherForZipCode(string zip, string tempUnit);
+    Task<CurrentWeather?> GetCurrentWeatherForZipCode(string zip, string tempUnit);
 }

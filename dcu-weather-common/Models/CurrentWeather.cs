@@ -22,4 +22,8 @@ public record CurrentWeather
     /// The Longitude of the given location
     /// </summary>
     public required double Long { get; set; }
+    /// <summary>
+    /// Set to true if rain is possible in the given timeframe
+    /// </summary>
+    public required bool RainPossibleToday { get; set; }
 }

@@ -29,6 +29,17 @@ public record CurrentWeatherReport
     /// The current temperature of the location
     /// </summary>
     public required double Temp { get; set; }
+    /// <summary>
+    /// The current date time of the weather report
+    /// </summary>
+    public required long Dt { get; set; }
+    public DateTime UtcDateTime
+    {
+        get
+        {
+            return DateTimeOffset.FromUnixTimeSeconds(Dt).UtcDateTime;
+        }
+    }
 }
 
 public record FutureWeatherReport
@@ -41,6 +52,17 @@ public record FutureWeatherReport
     /// If there is rain predicted for the area, the amount of rain in inches, else null
     /// </summary>
     public double? Rain { get; set; }
+    /// <summary>
+    /// The current date time of the weather report
+    /// </summary>
+    public required long Dt { get; set; }
+    public DateTime UtcDateTime
+    {
+        get
+        {
+            return DateTimeOffset.FromUnixTimeSeconds(Dt).UtcDateTime;
+        }
+    }
 }
 
 public record Temperature

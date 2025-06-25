@@ -1,4 +1,3 @@
-using System.Threading.Tasks;
 using Lycerius.DCUWeather.Common;
 using Lycerius.DCUWeather.Services;
 using Microsoft.AspNetCore.Mvc;
@@ -23,8 +22,18 @@ public class WeatherController : ControllerBase
     /// <param name="units">The units the temperatures should be in</param>
     /// <returns></returns>
     [HttpGet("Current/{zipCode}")]
-    public async Task<CurrentWeather> GetCurrentWeather(string zipCode, string units)
+    public async Task<ActionResult<CurrentWeather>> GetCurrentWeather(string zipCode, string units)
     {
-        return await _weatherProvider.GetCurrentWeatherForZipCode(zipCode, units);
+        try
+        {
+            var currentWeatherForZipcode = await _weatherProvider.GetCurrentWeatherForZipCode(zipCode, units);
+            return currentWeatherForZipcode != null ? Ok(currentWeatherForZipcode) : NotFound();
+        }
+        catch (Exception)
+        {
+            //TODO: Is there a default 500 page we can throw here instead?
+            return StatusCode(StatusCodes.Status500InternalServerError);
+        }
+
     }
 }
