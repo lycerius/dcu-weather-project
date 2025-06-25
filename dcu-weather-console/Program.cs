@@ -23,7 +23,7 @@ public class Program
         public required int Port { get; set; }
         [Option(Required = true, HelpText = "The zipcode to fetch weather from")]
         public required string ZipCode { get; set; }
-        [Option(Default = OutputFormat.TEXT)]
+        [Option(Default = OutputFormat.TEXT, HelpText = "Specifies the output format (text|json|yaml)")]
         public required OutputFormat Output { get; set; }
         [Option(Required = true, HelpText = "The temperature units the weather should be in (fahrenheit|celsius)")]
         public required string Units { get; set; }
