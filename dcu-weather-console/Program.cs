@@ -9,6 +9,10 @@ namespace Lycerius.DCUWeather.CommandLine;
 
 public class Program
 {
+    public enum OutputFormat
+    {
+        JSON, YAML, TEXT
+    }
     public abstract class BaseOptions
     {
         [Option(Default = "localhost", HelpText = "The hostname providing the weather api")]
@@ -19,8 +23,8 @@ public class Program
         public required int Port { get; set; }
         [Option(Required = true, HelpText = "The zipcode to fetch weather from")]
         public required string ZipCode { get; set; }
-        [Option(Default = "json")]
-        public required string Output { get; set; }
+        [Option(Default = OutputFormat.TEXT)]
+        public required OutputFormat Output { get; set; }
         [Option(Required = true, HelpText = "The temperature units the weather should be in")]
         public required TemperatureUnit Units { get; set; }
     }
@@ -72,16 +76,16 @@ public class Program
 
     private static void PrintResultsInSpecifiedOutput(object? toPrint, BaseOptions options)
     {
-        switch (options.Output.ToLower())
+        switch (options.Output)
         {
-            case "json":
+            case OutputFormat.JSON:
                 Console.WriteLine(JsonSerializer.Serialize(toPrint));
                 break;
-            case "yaml":
+            case OutputFormat.YAML:
                 Console.WriteLine(new SerializerBuilder().WithNamingConvention(CamelCaseNamingConvention.Instance).Build().Serialize(toPrint));
                 break;
-            case "text":
-                //TODO: Hmm...
+            case OutputFormat.TEXT:
+                Console.WriteLine(toPrint?.ToString());
                 break;
         }
     }

@@ -29,4 +29,11 @@ public record CurrentWeather
     /// Set to true if rain is possible in the given timeframe
     /// </summary>
     public required bool RainPossibleToday { get; set; }
+
+    public override string ToString()
+    {
+        return $"Location: {Lat},{Long}\n"
+        + $"Current Temperature: {CurrentTemperature}\n"
+        + $"Temperature Unit: {Unit}";
+    }
 }

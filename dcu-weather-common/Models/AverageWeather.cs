@@ -30,4 +30,12 @@ public record AverageWeather
     /// Whether or not rain is possible in the given period
     /// </summary>
     public required bool RainPossibleInPeriod { get; set; }
+
+    public override string ToString()
+    {
+        return $"Location: {Lat},{Lon}\n"
+        + $"Average Temperature: {AverageTemperature}\n"
+        + $"Temperature Unit: {Unit}\n"
+        + $"Rain Possible in Period: {RainPossibleInPeriod}";
+    }
 }
