@@ -1,7 +1,6 @@
-using Lycerius.DCUWeather.Common;
-using Lycerius.DCUWeather.Common.Models;
+using Common.Models;
 
-namespace Lycerius.DCUWeather.Services;
+namespace WeatherService.Services;
 
 public interface IWeatherProvider
 {

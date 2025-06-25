@@ -1,6 +1,6 @@
-using Lycerius.DCUWeather.Common;
+using Common.Models;
 
-namespace Lycerius.DCUWeather.Services;
+namespace WeatherService.Services;
 
 /// <summary>
 /// Converts various temperature units

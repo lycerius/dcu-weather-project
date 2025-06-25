@@ -1,4 +1,4 @@
-namespace Lycerius.DCUWeather.Services.OpenWeather.Models;
+namespace WeatherService.Services.WeatherProviders.OpenWeather.Models;
 
 /// <summary>
 /// Represents a result from OpenWeather's weather api

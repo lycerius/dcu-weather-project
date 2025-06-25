@@ -1,4 +1,4 @@
-namespace Lycerius.DCUWeather.Common.Services;
+namespace WeatherCli.Services;
 
 public record DCUWeatherServiceConfig
 {

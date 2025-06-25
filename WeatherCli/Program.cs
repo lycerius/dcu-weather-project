@@ -1,11 +1,11 @@
 ﻿using System.Text.Json;
 using CommandLine;
-using Lycerius.DCUWeather.Common;
-using Lycerius.DCUWeather.Common.Services;
+using Common.Models;
+using WeatherCli.Services;
 using YamlDotNet.Serialization;
 using YamlDotNet.Serialization.NamingConventions;
 
-namespace Lycerius.DCUWeather.CommandLine;
+namespace WeatherCli;
 
 public class Program
 {

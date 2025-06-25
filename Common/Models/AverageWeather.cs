@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 
-namespace Lycerius.DCUWeather.Common.Models;
+namespace Common.Models;
 
 /// <summary>
 /// Represents average weather for the given area

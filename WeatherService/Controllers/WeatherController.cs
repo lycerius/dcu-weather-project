@@ -1,9 +1,8 @@
-using Lycerius.DCUWeather.Common;
-using Lycerius.DCUWeather.Common.Models;
-using Lycerius.DCUWeather.Services;
+using Common.Models;
 using Microsoft.AspNetCore.Mvc;
+using WeatherService.Services;
 
-namespace Lycerius.DCUWeather.Controllers;
+namespace WeatherService.Controllers;
 
 [ApiController]
 [Route("[controller]")]

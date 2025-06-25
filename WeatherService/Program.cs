@@ -1,5 +1,5 @@
-using Lycerius.DCUWeather.Services;
-using Lycerius.DCUWeather.Services.OpenWeather;
+using WeatherService.Services;
+using WeatherService.Services.WeatherProviders.OpenWeather;
 
 var builder = WebApplication.CreateBuilder(args);
 

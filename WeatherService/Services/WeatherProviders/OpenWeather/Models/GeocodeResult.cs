@@ -1,4 +1,4 @@
-namespace Lycerius.DCUWeather.Services.OpenWeather.Models;
+namespace WeatherService.Services.WeatherProviders.OpenWeather.Models;
 
 /// <summary>
 /// Reperesents a Geocode query result from Open Weather's Geocode api

@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 
-namespace Lycerius.DCUWeather.Common.Models;
+namespace Common.Models;
 
 /// <summary>
 /// Reperesents current weather conditions for the given area

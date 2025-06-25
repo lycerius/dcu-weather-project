@@ -1,7 +1,7 @@
 using System.Net.Http.Json;
-using Lycerius.DCUWeather.Common.Models;
+using Common.Models;
 
-namespace Lycerius.DCUWeather.Common.Services;
+namespace WeatherCli.Services;
 
 public class DCUWeatherService
 {

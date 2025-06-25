@@ -1,8 +1,7 @@
-using Lycerius.DCUWeather.Common;
-using Lycerius.DCUWeather.Common.Models;
-using Lycerius.DCUWeather.Services.OpenWeather.Models;
+using Common.Models;
+using WeatherService.Services.WeatherProviders.OpenWeather.Models;
 
-namespace Lycerius.DCUWeather.Services.OpenWeather;
+namespace WeatherService.Services.WeatherProviders.OpenWeather;
 
 public class OpenWeatherWeatherProvider : IWeatherProvider
 {
