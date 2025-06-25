@@ -1,4 +1,4 @@
-using Lycerius.DCUWeather.Common;
+using Lycerius.DCUWeather.Common.Models;
 using Lycerius.DCUWeather.Services.OpenWeather.Models;
 
 namespace Lycerius.DCUWeather.Services.OpenWeather;
@@ -17,6 +17,39 @@ public class OpenWeatherWeatherProvider : IWeatherProvider
     }
 
     public async Task<CurrentWeather?> GetCurrentWeatherForZipCode(string zip, string tempUnit)
+    {
+        var weatherResult = await GetOpenWeatherResultForZipCode(zip);
+
+        return weatherResult == null ? null : new CurrentWeather
+        {
+            CurrentTemperature = _temperatureUnitsConverter.ConvertKelvinToUnits(weatherResult.Current.Temp, tempUnit),
+            Lat = weatherResult.Lat,
+            Long = weatherResult.Lon,
+            Unit = tempUnit,
+            RainPossibleToday = GetRainPossibleToday(weatherResult)
+        };
+    }
+
+    public async Task<AverageWeather?> GetAverageWeatherForZipCode(string zip, int timePeriod, string tempUnit)
+    {
+        var weatherResult = await GetOpenWeatherResultForZipCode(zip);
+
+        return weatherResult == null ? null : new AverageWeather
+        {
+            Lat = weatherResult.Lat,
+            Lon = weatherResult.Lon,
+            Unit = tempUnit,
+            AverageTemperature = _temperatureUnitsConverter.ConvertKelvinToUnits(GetAverageTemperatureForPeriod(weatherResult, timePeriod), tempUnit),
+            RainPossibleInPeriod = GetRainPossibleInPeriod(weatherResult, timePeriod)
+        };
+    }
+
+    /// <summary>
+    /// Calls the OpenWeatherApi for the given zipcode and returns the result if found
+    /// </summary>
+    /// <param name="zip">The zipcode to get weather for</param>
+    /// <returns>The weather result if weather was found, else null</returns>
+    private async Task<OpenWeatherResult?> GetOpenWeatherResultForZipCode(string zip)
     {
         GeocodeResult? zipToGeocode;
         try
@@ -58,14 +91,7 @@ public class OpenWeatherWeatherProvider : IWeatherProvider
             }
         }
 
-        return weatherResult == null ? null : new CurrentWeather
-        {
-            CurrentTemperature = _temperatureUnitsConverter.ConvertKelvinToUnits(weatherResult.Current.Temp, tempUnit),
-            Lat = zipToGeocode.Lat,
-            Long = zipToGeocode.Lon,
-            Unit = tempUnit,
-            RainPossibleToday = GetRainPossibleToday(weatherResult)
-        };
+        return weatherResult;
     }
 
     /// <summary>
@@ -86,6 +112,36 @@ public class OpenWeatherWeatherProvider : IWeatherProvider
     }
 
     /// <summary>
+    /// Calculates the average temperature for the given weather report, over the specified time period
+    /// </summary>
+    /// <param name="openWeatherResult">The weather report to calculate on</param>
+    /// <param name="timePeriodDays">The time period in days to calculate over</param>
+    /// <returns>The average temperature for the given time period</returns>
+    private double GetAverageTemperatureForPeriod(OpenWeatherResult openWeatherResult, int timePeriodDays)
+    {
+
+        return openWeatherResult.Daily
+        .OrderBy(w => w.Dt)
+        .Take(timePeriodDays)
+        .Select(w => (w.Temp.Morn + w.Temp.Day + w.Temp.Eve + w.Temp.Night) / 4)
+        .Average();
+    }
+
+    /// <summary>
+    /// Calculates if rain is possible for the given weather report, over the specified time period
+    /// </summary>
+    /// <param name="rainCheck">The weather report to calculate a rain check on</param>
+    /// <param name="timePeriodDays">The time period in days to calculate over</param>
+    /// <returns>If rain is possible over the given time period</returns>
+    private bool GetRainPossibleInPeriod(OpenWeatherResult rainCheck, int timePeriodDays)
+    {
+        return rainCheck.Daily
+        .OrderBy(w => w.Dt)
+        .Take(timePeriodDays)
+        .Any(w => w.Rain != null && w.Rain > 0);
+    }
+
+    /// <summary>
     /// Gets the latitude and longtitude for the given input zip
     /// </summary>
     /// <param name="zip">The zipcode to get lat and long for</param>
@@ -101,4 +157,5 @@ public class OpenWeatherWeatherProvider : IWeatherProvider
     {
         return $"{baseUri}&appid={_configuration["DcuWeatherApp:OpenWeatherApiKey"]}";
     }
+
 }

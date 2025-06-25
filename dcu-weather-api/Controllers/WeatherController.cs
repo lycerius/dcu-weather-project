@@ -1,4 +1,4 @@
-using Lycerius.DCUWeather.Common;
+using Lycerius.DCUWeather.Common.Models;
 using Lycerius.DCUWeather.Services;
 using Microsoft.AspNetCore.Mvc;
 
@@ -27,13 +27,34 @@ public class WeatherController : ControllerBase
         try
         {
             var currentWeatherForZipcode = await _weatherProvider.GetCurrentWeatherForZipCode(zipCode, units);
-            return currentWeatherForZipcode != null ? Ok(currentWeatherForZipcode) : NotFound();
+            return currentWeatherForZipcode != null ? Ok(currentWeatherForZipcode) : BadRequest();
         }
-        catch (Exception)
+        catch (Exception e)
         {
             //TODO: Is there a default 500 page we can throw here instead?
+            Console.WriteLine(e);
             return StatusCode(StatusCodes.Status500InternalServerError);
         }
 
+    }
+
+    [HttpGet("Average/{zipCode}")]
+    public async Task<ActionResult<AverageWeather>> GetAverageWeather(string zipCode, string timePeriod, string units)
+    {
+        try
+        {
+            bool success = int.TryParse(timePeriod, out int timePeriodInt);
+            if (!success || timePeriodInt < 2 || timePeriodInt > 5)
+            {
+                return BadRequest();
+            }
+            var result = await _weatherProvider.GetAverageWeatherForZipCode(zipCode, timePeriodInt, units);
+            return result != null ? Ok(result) : BadRequest();
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
+            return StatusCode(StatusCodes.Status500InternalServerError);
+        }
     }
 }

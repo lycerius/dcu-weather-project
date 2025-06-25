@@ -68,7 +68,19 @@ public record FutureWeatherReport
 public record Temperature
 {
     /// <summary>
-    /// The daily average temperature
+    /// The day time average temperature
     /// </summary>
     public required double Day { get; set; }
+    /// <summary>
+    /// The morning average temperature
+    /// </summary>
+    public required double Morn { get; set; }
+    /// <summary>
+    /// The evening average temperature
+    /// </summary>
+    public required double Eve { get; set; }
+    /// <summary>
+    /// The night time average temperature
+    /// </summary>
+    public required double Night { get; set; }
 }

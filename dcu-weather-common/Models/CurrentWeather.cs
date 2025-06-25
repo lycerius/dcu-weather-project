@@ -1,4 +1,4 @@
-namespace Lycerius.DCUWeather.Common;
+namespace Lycerius.DCUWeather.Common.Models;
 
 /// <summary>
 /// Reperesents current weather conditions for the given area
