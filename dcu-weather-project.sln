@@ -9,6 +9,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "dcu-weather-common", "dcu-w
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "dcu-weather-api.Tests", "dcu-weather-api.Tests\dcu-weather-api.Tests.csproj", "{F485C3CA-D1A6-4AB3-A4E5-2D1B223408D7}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "dcu-weather-console", "dcu-weather-console\dcu-weather-console.csproj", "{5771CC4A-04EC-45A7-8C31-5F831619C2B5}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -55,6 +57,18 @@ Global
 		{F485C3CA-D1A6-4AB3-A4E5-2D1B223408D7}.Release|x64.Build.0 = Release|Any CPU
 		{F485C3CA-D1A6-4AB3-A4E5-2D1B223408D7}.Release|x86.ActiveCfg = Release|Any CPU
 		{F485C3CA-D1A6-4AB3-A4E5-2D1B223408D7}.Release|x86.Build.0 = Release|Any CPU
+		{5771CC4A-04EC-45A7-8C31-5F831619C2B5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5771CC4A-04EC-45A7-8C31-5F831619C2B5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5771CC4A-04EC-45A7-8C31-5F831619C2B5}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{5771CC4A-04EC-45A7-8C31-5F831619C2B5}.Debug|x64.Build.0 = Debug|Any CPU
+		{5771CC4A-04EC-45A7-8C31-5F831619C2B5}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{5771CC4A-04EC-45A7-8C31-5F831619C2B5}.Debug|x86.Build.0 = Debug|Any CPU
+		{5771CC4A-04EC-45A7-8C31-5F831619C2B5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5771CC4A-04EC-45A7-8C31-5F831619C2B5}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5771CC4A-04EC-45A7-8C31-5F831619C2B5}.Release|x64.ActiveCfg = Release|Any CPU
+		{5771CC4A-04EC-45A7-8C31-5F831619C2B5}.Release|x64.Build.0 = Release|Any CPU
+		{5771CC4A-04EC-45A7-8C31-5F831619C2B5}.Release|x86.ActiveCfg = Release|Any CPU
+		{5771CC4A-04EC-45A7-8C31-5F831619C2B5}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
