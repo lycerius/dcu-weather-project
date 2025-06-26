@@ -14,7 +14,7 @@ public class WeatherService : IWeatherService
 
     public async Task<CurrentWeather?> GetCurrentWeatherForZipCode(string zipCode, TemperatureUnit temperatureUnit)
     {
-        var urlToCall = $"/Weather/Current/{zipCode}?units={temperatureUnit}";
+        var urlToCall = $"v1/Weather/Current/{zipCode}?units={temperatureUnit}";
         try
         {
             return await _httpClient.GetFromJsonAsync<CurrentWeather>(urlToCall);
@@ -28,7 +28,7 @@ public class WeatherService : IWeatherService
 
     public async Task<AverageWeather?> GetAverageWeather(string zipCode, TemperatureUnit temperatureUnit, int timePeriodDays)
     {
-        var urlToCall = $"/Weather/Average/{zipCode}?units={temperatureUnit}&timePeriod={timePeriodDays}";
+        var urlToCall = $"v1/Weather/Average/{zipCode}?units={temperatureUnit}&timePeriod={timePeriodDays}";
         try
         {
             return await _httpClient.GetFromJsonAsync<AverageWeather>(urlToCall);

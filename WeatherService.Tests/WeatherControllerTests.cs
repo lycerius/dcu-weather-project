@@ -39,7 +39,7 @@ public class WeatherControllerTests
         _weatherProvider.Setup(w => w.GetCurrentWeatherForZipCode("90210", TemperatureUnit.C))
             .ReturnsAsync(expected);
 
-        var controller = new WeatherController(
+        var controller = new WeatherControllerV1(
             _logger.Object,
             _weatherProvider.Object,
             _currentWeatherValidator,
@@ -62,7 +62,7 @@ public class WeatherControllerTests
         _weatherProvider.Setup(w => w.GetCurrentWeatherForZipCode("00000", TemperatureUnit.F))
             .ReturnsAsync((CurrentWeather?)null);
 
-        var controller = new WeatherController(
+        var controller = new WeatherControllerV1(
             _logger.Object,
             _weatherProvider.Object,
             _currentWeatherValidator,
@@ -81,7 +81,7 @@ public class WeatherControllerTests
     public async Task GetCurrentWeather_ShouldReturnBadRequest_WhenValidationFails()
     {
         // Arrange
-        var controller = new WeatherController(
+        var controller = new WeatherControllerV1(
             _logger.Object,
             _weatherProvider.Object,
             _currentWeatherValidator,
@@ -104,7 +104,7 @@ public class WeatherControllerTests
         _weatherProvider.Setup(w => w.GetCurrentWeatherForZipCode(It.IsAny<string>(), It.IsAny<TemperatureUnit>()))
             .ThrowsAsync(new System.Exception("fail"));
 
-        var controller = new WeatherController(
+        var controller = new WeatherControllerV1(
             _logger.Object,
             _weatherProvider.Object,
             _currentWeatherValidator,
@@ -135,7 +135,7 @@ public class WeatherControllerTests
         _weatherProvider.Setup(w => w.GetAverageWeatherForZipCode("90210", 3, TemperatureUnit.F))
             .ReturnsAsync(expected);
 
-        var controller = new WeatherController(
+        var controller = new WeatherControllerV1(
             _logger.Object,
             _weatherProvider.Object,
             _currentWeatherValidator,
@@ -158,7 +158,7 @@ public class WeatherControllerTests
         _weatherProvider.Setup(w => w.GetAverageWeatherForZipCode("00000", 2, TemperatureUnit.C))
             .ReturnsAsync((AverageWeather?)null);
 
-        var controller = new WeatherController(
+        var controller = new WeatherControllerV1(
             _logger.Object,
             _weatherProvider.Object,
             _currentWeatherValidator,
@@ -180,7 +180,7 @@ public class WeatherControllerTests
     public async Task GetAverageWeather_ShouldReturnBadRequest_WhenTimePeriodInvalid(string timePeriod)
     {
         // Arrange
-        var controller = new WeatherController(
+        var controller = new WeatherControllerV1(
             _logger.Object,
             _weatherProvider.Object,
             _currentWeatherValidator,
@@ -200,7 +200,7 @@ public class WeatherControllerTests
     public async Task GetAverageWeather_ShouldReturnBadRequest_WhenValidationFails()
     {
         // Arrange
-        var controller = new WeatherController(
+        var controller = new WeatherControllerV1(
             _logger.Object,
             _weatherProvider.Object,
             _currentWeatherValidator,
@@ -223,7 +223,7 @@ public class WeatherControllerTests
         _weatherProvider.Setup(w => w.GetAverageWeatherForZipCode(It.IsAny<string>(), It.IsAny<int>(), It.IsAny<TemperatureUnit>()))
             .ThrowsAsync(new System.Exception("fail"));
 
-        var controller = new WeatherController(
+        var controller = new WeatherControllerV1(
             _logger.Object,
             _weatherProvider.Object,
             _currentWeatherValidator,
