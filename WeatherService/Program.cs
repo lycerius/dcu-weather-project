@@ -1,12 +1,17 @@
 using System.Text.Json.Serialization;
+using FluentValidation;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Options;
 using Microsoft.OpenApi.Models;
+using WeatherService.Controllers; // For the query/validator types
 using WeatherService.Services;
+using WeatherService.Services.WeatherProviders;
 using WeatherService.Services.WeatherProviders.OpenWeather;
 
 var builder = WebApplication.CreateBuilder(args);
+//Logging
+builder.Logging.ClearProviders();
+builder.Logging.AddConsole();
 
 //Auth Config
 builder.Services.AddAuthorization();
@@ -72,6 +77,10 @@ builder.Services.AddHttpClient("openWeatherClient", client =>
 //Services
 builder.Services.AddScoped<IWeatherProvider, OpenWeatherWeatherProvider>();
 builder.Services.AddScoped<TemperatureUnitsConverter>();
+
+// Validators
+builder.Services.AddScoped<IValidator<GetCurrentWeatherQuery>, GetCurrentWeatherQueryValidator>();
+builder.Services.AddScoped<IValidator<GetAverageWeatherQuery>, GetAverageWeatherQueryValidator>();
 
 var app = builder.Build();
 

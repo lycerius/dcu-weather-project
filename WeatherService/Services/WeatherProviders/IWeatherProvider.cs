@@ -1,6 +1,6 @@
 using Common.Models;
 
-namespace WeatherService.Services;
+namespace WeatherService.Services.WeatherProviders;
 
 public interface IWeatherProvider
 {

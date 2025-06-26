@@ -1,18 +1,27 @@
 using Common.Models;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
 using Moq;
 using WeatherService.Controllers;
-using WeatherService.Services;
+using WeatherService.Services.WeatherProviders;
+using FluentValidation;
+using FluentValidation.TestHelper;
 
 namespace WeatherService.Tests;
 
 public class WeatherControllerTests
 {
     private readonly Mock<IWeatherProvider> _weatherProvider;
+    private readonly Mock<ILogger> _logger;
+    private readonly IValidator<GetCurrentWeatherQuery> _currentWeatherValidator;
+    private readonly IValidator<GetAverageWeatherQuery> _averageWeatherValidator;
 
     public WeatherControllerTests()
     {
         _weatherProvider = new Mock<IWeatherProvider>();
+        _logger = new Mock<ILogger>();
+        _currentWeatherValidator = new GetCurrentWeatherQueryValidator();
+        _averageWeatherValidator = new GetAverageWeatherQueryValidator();
     }
 
     [Fact]
@@ -30,7 +39,12 @@ public class WeatherControllerTests
         _weatherProvider.Setup(w => w.GetCurrentWeatherForZipCode("90210", TemperatureUnit.C))
             .ReturnsAsync(expected);
 
-        var controller = new WeatherController(_weatherProvider.Object);
+        var controller = new WeatherController(
+            _logger.Object,
+            _weatherProvider.Object,
+            _currentWeatherValidator,
+            _averageWeatherValidator
+        );
 
         // Act
         var result = await controller.GetCurrentWeather("90210", TemperatureUnit.C);
@@ -48,7 +62,12 @@ public class WeatherControllerTests
         _weatherProvider.Setup(w => w.GetCurrentWeatherForZipCode("00000", TemperatureUnit.F))
             .ReturnsAsync((CurrentWeather?)null);
 
-        var controller = new WeatherController(_weatherProvider.Object);
+        var controller = new WeatherController(
+            _logger.Object,
+            _weatherProvider.Object,
+            _currentWeatherValidator,
+            _averageWeatherValidator
+        );
 
         // Act
         var result = await controller.GetCurrentWeather("00000", TemperatureUnit.F);
@@ -59,13 +78,38 @@ public class WeatherControllerTests
     }
 
     [Fact]
+    public async Task GetCurrentWeather_ShouldReturnBadRequest_WhenValidationFails()
+    {
+        // Arrange
+        var controller = new WeatherController(
+            _logger.Object,
+            _weatherProvider.Object,
+            _currentWeatherValidator,
+            _averageWeatherValidator
+        );
+
+        // Invalid zip code (not 5 digits)
+        var result = await controller.GetCurrentWeather("12", TemperatureUnit.C);
+
+        // Assert
+        var badRequest = Assert.IsType<BadRequestObjectResult>(result.Result);
+        Assert.Contains("Zip code must be a 5-digit number.", (IEnumerable<string>)badRequest.Value);
+        _weatherProvider.Verify(w => w.GetCurrentWeatherForZipCode(It.IsAny<string>(), It.IsAny<TemperatureUnit>()), Times.Never());
+    }
+
+    [Fact]
     public async Task GetCurrentWeather_ShouldReturn500_WhenExceptionThrown()
     {
         // Arrange
         _weatherProvider.Setup(w => w.GetCurrentWeatherForZipCode(It.IsAny<string>(), It.IsAny<TemperatureUnit>()))
             .ThrowsAsync(new System.Exception("fail"));
 
-        var controller = new WeatherController(_weatherProvider.Object);
+        var controller = new WeatherController(
+            _logger.Object,
+            _weatherProvider.Object,
+            _currentWeatherValidator,
+            _averageWeatherValidator
+        );
 
         // Act
         var result = await controller.GetCurrentWeather("90210", TemperatureUnit.C);
@@ -91,7 +135,12 @@ public class WeatherControllerTests
         _weatherProvider.Setup(w => w.GetAverageWeatherForZipCode("90210", 3, TemperatureUnit.F))
             .ReturnsAsync(expected);
 
-        var controller = new WeatherController(_weatherProvider.Object);
+        var controller = new WeatherController(
+            _logger.Object,
+            _weatherProvider.Object,
+            _currentWeatherValidator,
+            _averageWeatherValidator
+        );
 
         // Act
         var result = await controller.GetAverageWeather("90210", "3", TemperatureUnit.F);
@@ -109,7 +158,12 @@ public class WeatherControllerTests
         _weatherProvider.Setup(w => w.GetAverageWeatherForZipCode("00000", 2, TemperatureUnit.C))
             .ReturnsAsync((AverageWeather?)null);
 
-        var controller = new WeatherController(_weatherProvider.Object);
+        var controller = new WeatherController(
+            _logger.Object,
+            _weatherProvider.Object,
+            _currentWeatherValidator,
+            _averageWeatherValidator
+        );
 
         // Act
         var result = await controller.GetAverageWeather("00000", "2", TemperatureUnit.C);
@@ -126,13 +180,39 @@ public class WeatherControllerTests
     public async Task GetAverageWeather_ShouldReturnBadRequest_WhenTimePeriodInvalid(string timePeriod)
     {
         // Arrange
-        var controller = new WeatherController(_weatherProvider.Object);
+        var controller = new WeatherController(
+            _logger.Object,
+            _weatherProvider.Object,
+            _currentWeatherValidator,
+            _averageWeatherValidator
+        );
 
         // Act
         var result = await controller.GetAverageWeather("90210", timePeriod, TemperatureUnit.C);
 
         // Assert
-        Assert.IsType<BadRequestResult>(result.Result);
+        var badRequest = Assert.IsType<BadRequestObjectResult>(result.Result);
+        Assert.Contains("Time period must be an integer between 2 and 5.", (IEnumerable<string>)badRequest.Value);
+        _weatherProvider.Verify(w => w.GetAverageWeatherForZipCode(It.IsAny<string>(), It.IsAny<int>(), It.IsAny<TemperatureUnit>()), Times.Never());
+    }
+
+    [Fact]
+    public async Task GetAverageWeather_ShouldReturnBadRequest_WhenValidationFails()
+    {
+        // Arrange
+        var controller = new WeatherController(
+            _logger.Object,
+            _weatherProvider.Object,
+            _currentWeatherValidator,
+            _averageWeatherValidator
+        );
+
+        // Invalid zip code (not 5 digits)
+        var result = await controller.GetAverageWeather("12", "3", TemperatureUnit.C);
+
+        // Assert
+        var badRequest = Assert.IsType<BadRequestObjectResult>(result.Result);
+        Assert.Contains("Zip code must be a 5-digit number.", (IEnumerable<string>)badRequest.Value);
         _weatherProvider.Verify(w => w.GetAverageWeatherForZipCode(It.IsAny<string>(), It.IsAny<int>(), It.IsAny<TemperatureUnit>()), Times.Never());
     }
 
@@ -143,7 +223,12 @@ public class WeatherControllerTests
         _weatherProvider.Setup(w => w.GetAverageWeatherForZipCode(It.IsAny<string>(), It.IsAny<int>(), It.IsAny<TemperatureUnit>()))
             .ThrowsAsync(new System.Exception("fail"));
 
-        var controller = new WeatherController(_weatherProvider.Object);
+        var controller = new WeatherController(
+            _logger.Object,
+            _weatherProvider.Object,
+            _currentWeatherValidator,
+            _averageWeatherValidator
+        );
 
         // Act
         var result = await controller.GetAverageWeather("90210", "3", TemperatureUnit.C);
@@ -152,5 +237,86 @@ public class WeatherControllerTests
         var statusResult = Assert.IsType<StatusCodeResult>(result.Result);
         Assert.Equal(500, statusResult.StatusCode);
         _weatherProvider.Verify(w => w.GetAverageWeatherForZipCode("90210", 3, TemperatureUnit.C), Times.Once());
+    }
+
+    [Fact]
+    public void GetCurrentWeatherQueryValidator_Should_HaveError_When_ZipCodeIsEmpty()
+    {
+        var validator = new GetCurrentWeatherQueryValidator();
+        var model = new GetCurrentWeatherQuery { ZipCode = "", Units = TemperatureUnit.C };
+        var result = validator.TestValidate(model);
+        result.ShouldHaveValidationErrorFor(x => x.ZipCode)
+            .WithErrorMessage("Zip code is required.");
+    }
+
+    [Fact]
+    public void GetCurrentWeatherQueryValidator_Should_HaveError_When_ZipCodeIsInvalid()
+    {
+        var validator = new GetCurrentWeatherQueryValidator();
+        var model = new GetCurrentWeatherQuery { ZipCode = "12", Units = TemperatureUnit.C };
+        var result = validator.TestValidate(model);
+        result.ShouldHaveValidationErrorFor(x => x.ZipCode)
+            .WithErrorMessage("Zip code must be a 5-digit number.");
+    }
+
+    [Fact]
+    public void GetCurrentWeatherQueryValidator_Should_NotHaveError_When_Valid()
+    {
+        var validator = new GetCurrentWeatherQueryValidator();
+        var model = new GetCurrentWeatherQuery { ZipCode = "12345", Units = TemperatureUnit.F };
+        var result = validator.TestValidate(model);
+        result.ShouldNotHaveAnyValidationErrors();
+    }
+
+    [Fact]
+    public void GetAverageWeatherQueryValidator_Should_HaveError_When_ZipCodeIsEmpty()
+    {
+        var validator = new GetAverageWeatherQueryValidator();
+        var model = new GetAverageWeatherQuery { ZipCode = "", TimePeriod = "3", Units = TemperatureUnit.C };
+        var result = validator.TestValidate(model);
+        result.ShouldHaveValidationErrorFor(x => x.ZipCode)
+            .WithErrorMessage("Zip code is required.");
+    }
+
+    [Fact]
+    public void GetAverageWeatherQueryValidator_Should_HaveError_When_ZipCodeIsInvalid()
+    {
+        var validator = new GetAverageWeatherQueryValidator();
+        var model = new GetAverageWeatherQuery { ZipCode = "abc", TimePeriod = "3", Units = TemperatureUnit.C };
+        var result = validator.TestValidate(model);
+        result.ShouldHaveValidationErrorFor(x => x.ZipCode)
+            .WithErrorMessage("Zip code must be a 5-digit number.");
+    }
+
+    [Fact]
+    public void GetAverageWeatherQueryValidator_Should_HaveError_When_TimePeriodIsEmpty()
+    {
+        var validator = new GetAverageWeatherQueryValidator();
+        var model = new GetAverageWeatherQuery { ZipCode = "12345", TimePeriod = "", Units = TemperatureUnit.C };
+        var result = validator.TestValidate(model);
+        result.ShouldHaveValidationErrorFor(x => x.TimePeriod)
+            .WithErrorMessage("Time period is required.");
+    }
+
+    [Theory]
+    [InlineData("notanumber")]
+    [InlineData("1")]
+    [InlineData("6")]
+    public void GetAverageWeatherQueryValidator_Should_HaveError_When_TimePeriodInvalid(string timePeriod)
+    {
+        var validator = new GetAverageWeatherQueryValidator();
+        var model = new GetAverageWeatherQuery { ZipCode = "12345", TimePeriod = timePeriod, Units = TemperatureUnit.C };
+        var result = validator.TestValidate(model);
+        result.ShouldHaveValidationErrorFor(x => x.TimePeriod)
+            .WithErrorMessage("Time period must be an integer between 2 and 5.");
+    }
+
+    [Fact]
+    public void GetAverageWeatherQueryValidator_Should_NotHaveError_When_Valid()
+    {
+        var validator = new GetAverageWeatherQueryValidator();
+        var model = new GetAverageWeatherQuery { ZipCode = "12345", TimePeriod = "3", Units = TemperatureUnit.F };
+        var result = validator.TestValidate(model);
+        result.ShouldNotHaveAnyValidationErrors();
     }
 }
