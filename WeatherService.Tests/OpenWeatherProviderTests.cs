@@ -473,7 +473,6 @@ public class OpenWeatherWeatherProviderTests
     [Fact]
     public async Task GetCurrentWeatherForZipCode_ShouldUseCachedEntry_IfExists()
     {
-        object something;
         // Arrange
         GeocodeResult cachedGeocodeResult = new GeocodeResult
         {
