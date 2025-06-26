@@ -1,1 +1,188 @@
-# dcu-weather-project
+# DCU Weather Project
+
+A .NET 9.0 solution for retrieving current and average weather data by ZIP code, using the OpenWeather API. The project consists of a Web API (`WeatherService`) and a command-line interface (`WeatherCli`).
+
+---
+
+## Table of Contents
+
+- [Project Structure](#project-structure)
+- [Prerequisites](#prerequisites)
+- [Running the Web API Locally](#running-the-web-api-locally)
+- [Running the Web API via Docker](#running-the-web-api-via-docker)
+- [Using the CLI](#using-the-cli)
+  - [CLI Usage Examples](#cli-usage-examples)
+- [Configuration](#configuration)
+- [Testing](#testing)
+- [Notes](#notes)
+
+---
+
+## Project Structure
+
+```
+dcu-weather-project/
+├── Common/                # Shared models and enums
+├── WeatherService/        # ASP.NET Core Web API
+├── WeatherCli/            # .NET CLI for weather queries
+```
+
+---
+
+## Prerequisites
+
+- [.NET 9.0 SDK](https://dotnet.microsoft.com/download)
+- [Docker](https://www.docker.com/) (optional, for containerized runs)
+- An [OpenWeather API key](https://openweathermap.org/api) (for real data)
+
+---
+
+## Running the Web API Locally
+
+1. **Configure API Key**
+
+   Edit `WeatherService/appsettings.json` and set your OpenWeather API key:
+
+   ```json
+   "DcuWeatherApp": {
+     "OpenWeatherApiKey": "YOUR_OPENWEATHER_API_KEY"
+   }
+   ```
+
+2. **Build and Run**
+
+   ```sh
+   cd WeatherService
+   dotnet build
+   dotnet run
+   ```
+
+   The API will be available at `http://localhost:5291` (or as specified in `launchSettings.json`).
+
+3. **API Endpoints**
+
+   - `GET /weather/current/{zipCode}?units={C|F}`  
+     Returns current weather for the given ZIP code.
+   - `GET /weather/average/{zipCode}?units={C|F}&timePeriod={2-5}`  
+     Returns average weather for the given ZIP code and period (2-5 days).
+
+---
+
+## Running the Web API via Docker
+
+1. **Build the Docker Image**
+
+   ```sh
+   cd WeatherService
+   docker build -t dcu-weather-service .
+   ```
+
+2. **Run the Container**
+
+   ```sh
+   docker run -e "DcuWeatherApp__OpenWeatherApiKey=YOUR_OPENWEATHER_API_KEY" -p 5291:5291 dcu-weather-service
+   ```
+
+   The API will be available at `http://localhost:5291`.
+
+---
+
+## Using the CLI
+
+The CLI allows you to fetch weather data from the API and output it in text, JSON, or YAML.
+
+### Build the CLI
+
+```sh
+cd WeatherCli
+dotnet build
+```
+
+### CLI Usage
+
+```sh
+dotnet run --project WeatherCli -- [command] [options]
+```
+
+#### CLI Commands
+
+- `get-current-weather`  
+  Fetches current weather for a ZIP code.
+
+- `get-average-weather`  
+  Fetches average weather for a ZIP code over a period (2-5 days).
+
+#### Common Options
+
+- `--host` (default: `localhost`)  
+  The API host.
+- `--protocol` (default: `http`)  
+  The protocol (`http` or `https`).
+- `--port` (default: `5000`)  
+  The API port.
+- `--zipcode` (required)  
+  The ZIP code to query.
+- `--units` (required)  
+  Temperature units: `celsius` or `fahrenheit`.
+- `--output` (default: `text`)  
+  Output format: `text`, `json`, or `yaml`.
+
+#### `get-average-weather` Additional Option
+
+- `--timeperiod` (required)  
+  Number of days to average over (2-5).
+
+---
+
+### CLI Usage Examples
+
+**Get current weather in Celsius for ZIP 90210:**
+
+```sh
+dotnet run --project WeatherCli -- get-current-weather --zipcode 90210 --units celsius
+```
+
+**Get average weather in Fahrenheit for ZIP 90210 over 3 days, output as JSON:**
+
+```sh
+dotnet run --project WeatherCli -- get-average-weather --zipcode 90210 --units fahrenheit --timeperiod 3 --output json
+```
+
+**Specify a custom API host and port:**
+
+```sh
+dotnet run --project WeatherCli -- get-current-weather --zipcode 90210 --units celsius --host localhost --port 5291
+```
+
+---
+
+## Configuration
+
+- **API Key:**  
+  Set in `WeatherService/appsettings.json` or via environment variable `DcuWeatherApp__OpenWeatherApiKey` (for Docker).
+
+- **API Base Address:**  
+  The CLI defaults to `http://localhost:5000`. Use `--host`, `--port`, and `--protocol` to override.
+
+---
+
+## Testing
+
+Both the API and CLI have unit tests.
+
+To run all tests:
+
+```sh
+dotnet test
+```
+
+---
+
+## Notes
+
+- The CLI supports output in text, JSON, and YAML for easy integration.
+- For development, you can use the included `launchSettings.json` or Docker for isolated runs.
+
+---
+
+**Contributions and issues are welcome! Please use the GitHub repository for tracking and discussions.**
