@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Common.Models;
+using WeatherService.Exceptions;
 using WeatherService.Services.WeatherProviders.OpenWeather.Models;
 
 namespace WeatherService.Services.WeatherProviders.OpenWeather;
@@ -65,8 +66,14 @@ public class OpenWeatherWeatherProvider : IWeatherProvider
             }
             else
             {
-                throw;
+                throw new WeatherProviderException("Error retrieving geocode for zip code", e);
             }
+        }
+
+        // Should be handled by above, but gaurd against just in case
+        if (zipToGeocode == null)
+        {
+            return null;
         }
 
 
@@ -84,7 +91,7 @@ public class OpenWeatherWeatherProvider : IWeatherProvider
             }
             else
             {
-                throw;
+                throw new WeatherProviderException("Error retrieving weather for zip code", e);
             }
         }
 
@@ -148,7 +155,7 @@ public class OpenWeatherWeatherProvider : IWeatherProvider
         //TODO: This should be cached
         var uriToGet = WithAppIdInUri($"geo/1.0/zip?zip={zip},US");
         return await _httpClient.GetFromJsonAsync<GeocodeResult>(uriToGet);
-    
+
     }
 
     private string WithAppIdInUri(string baseUri)

@@ -23,7 +23,7 @@ public class TemperatureUnitsConverter
             case TemperatureUnit.C:
                 return kelvin - 273.15;
             default:
-                throw new Exception($"Unknown output units provided {outputUnits}");
+                throw new NotSupportedException($"Unknown output units provided {outputUnits}");
         }
     }
 }
