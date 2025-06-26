@@ -25,6 +25,7 @@ dcu-weather-project/
 ├── Common/                # Shared models and enums
 ├── WeatherService/        # ASP.NET Core Web API
 ├── WeatherCli/            # .NET CLI for weather queries
+├── Dockerfile             # Dockerfile for building the API container
 ```
 
 ---
@@ -57,7 +58,7 @@ dcu-weather-project/
    dotnet run
    ```
 
-   The API will be available at `http://localhost:5291` (or as specified in `launchSettings.json`).
+   The API will be available at `http://localhost:5000` (or as specified in `launchSettings.json`).
 
 3. **API Endpoints**
 
@@ -70,20 +71,21 @@ dcu-weather-project/
 
 ## Running the Web API via Docker
 
+A root-level `Dockerfile` is provided for building and running the API container.
+
 1. **Build the Docker Image**
 
    ```sh
-   cd WeatherService
    docker build -t dcu-weather-service .
    ```
 
 2. **Run the Container**
 
    ```sh
-   docker run -e "DcuWeatherApp__OpenWeatherApiKey=YOUR_OPENWEATHER_API_KEY" -p 5291:5291 dcu-weather-service
+   docker run -e "DcuWeatherApp__OpenWeatherApiKey=YOUR_OPENWEATHER_API_KEY" -p 5000:5000 dcu-weather-service
    ```
 
-   The API will be available at `http://localhost:5291`.
+   The API will be available at [http://localhost:5000](http://localhost:5000).
 
 ---
 
@@ -151,7 +153,7 @@ dotnet run --project WeatherCli -- get-average-weather --zipcode 90210 --units f
 **Specify a custom API host and port:**
 
 ```sh
-dotnet run --project WeatherCli -- get-current-weather --zipcode 90210 --units celsius --host localhost --port 5291
+dotnet run --project WeatherCli -- get-current-weather --zipcode 90210 --units celsius --host localhost --port 5000
 ```
 
 ---
