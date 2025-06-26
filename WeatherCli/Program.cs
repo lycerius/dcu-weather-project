@@ -1,6 +1,8 @@
-﻿using System.Text.Json;
+﻿using System.Net.Http.Headers;
+using System.Text.Json;
 using CommandLine;
 using Common.Models;
+using WeatherCli.Models;
 using WeatherCli.Services;
 using YamlDotNet.Serialization;
 using YamlDotNet.Serialization.NamingConventions;
@@ -21,6 +23,10 @@ public class Program
         public required string Protocol { get; set; }
         [Option(Default = 5000, HelpText = "The port to use when calling the weather api")]
         public required int Port { get; set; }
+    }
+
+    public abstract class BaseWeatherOptions : BaseOptions
+    {
         [Option(Required = true, HelpText = "The zipcode to fetch weather from")]
         public required string ZipCode { get; set; }
         [Option(Default = OutputFormat.TEXT, HelpText = "Specifies the output format (text|json|yaml)")]
@@ -34,12 +40,30 @@ public class Program
         }
     }
 
+    [Verb("register-user", HelpText = "Registers a new user")]
+    public class RegisterUserOptions : BaseOptions
+    {
+        [Option(Required = true, HelpText = "The email of the user to register")]
+        public required string Email { get; set; }
+        [Option(Required = true, HelpText = "The password of the user to register")]
+        public required string Password { get; set; }
+    }
+
+    [Verb("login-user", HelpText = "Logs in a user and saves the JWT token to a file")]
+    public class LoginUserOptions : BaseOptions
+    {
+        [Option(Required = true, HelpText = "The email of the user to log in")]
+        public required string Email { get; set; }
+        [Option(Required = true, HelpText = "The password of the user to log in")]
+        public required string Password { get; set; }
+    }
+
     [Verb("get-current-weather", HelpText = "Gets the current weather")]
-    public class GetCurrentWeatherOptions : BaseOptions
+    public class GetCurrentWeatherOptions : BaseWeatherOptions
     { }
 
     [Verb("get-average-weather", HelpText = "Gets the average weather")]
-    public class GetAverageWeatherOptions : BaseOptions
+    public class GetAverageWeatherOptions : BaseWeatherOptions
     {
         [Option(Required = true, HelpText = "Number of days to calculate the average over (must be a value from 2-5)")]
         public required int TimePeriod { get; set; }
@@ -47,34 +71,92 @@ public class Program
 
     public static async Task Main(string[] args)
     {
-        await Parser.Default.ParseArguments<GetCurrentWeatherOptions, GetAverageWeatherOptions>(args)
+        await Parser.Default.ParseArguments<RegisterUserOptions, LoginUserOptions, GetCurrentWeatherOptions, GetAverageWeatherOptions>(args)
+        .WithParsedAsync<RegisterUserOptions>(RegisterUser).Result
+        .WithParsedAsync<LoginUserOptions>(LoginUser).Result
         .WithParsedAsync<GetCurrentWeatherOptions>(GetCurrentWeather).Result
         .WithParsedAsync<GetAverageWeatherOptions>(GetAverageWeather);
     }
 
+    private static async Task RegisterUser(RegisterUserOptions options)
+    {
+        var authService = GenerateAuthService(options);
+        var success = await authService.RegisterUser(options.Email, options.Password);
+        if (success)
+        {
+            Console.WriteLine("User registered successfully.");
+        }
+        else
+        {
+            Console.WriteLine("Failed to register user.");
+        }
+    }
+
+    private static async Task LoginUser(LoginUserOptions options)
+    {
+        var authService = GenerateAuthService(options);
+        var success = await authService.LoginUser(options.Email, options.Password);
+        if (success)
+        {
+            Console.WriteLine("User logged in successfully.");
+        }
+        else
+        {
+            Console.WriteLine("Failed to log in user.");
+        }
+    }
+
     private static async Task GetCurrentWeather(GetCurrentWeatherOptions options)
     {
-        var dcuWeatherService = GenerateService(options);
+        var dcuWeatherService = await GenerateWeatherService(options);
         var results = await dcuWeatherService.GetCurrentWeatherForZipCode(options.ZipCode, options.TemperatureUnit);
         PrintResultsInSpecifiedOutput(results, options);
     }
 
     private static async Task GetAverageWeather(GetAverageWeatherOptions options)
     {
-        var dcuWeatherService = GenerateService(options);
+        var dcuWeatherService = await GenerateWeatherService(options);
         var results = await dcuWeatherService.GetAverageWeather(options.ZipCode, options.TemperatureUnit, options.TimePeriod);
         PrintResultsInSpecifiedOutput(results, options);
     }
 
-    private static DCUWeatherService GenerateService(BaseOptions options)
+    private static async Task<DCUWeatherService> GenerateWeatherService(BaseOptions options)
     {
-        return new DCUWeatherService(new HttpClient
+        var authService = GenerateAuthService(options);
+        var authToken = await authService.GetBearerToken();
+
+        if (authToken == null)
+        {
+            Console.WriteLine("Failed to retrieve authentication token. Either credentials are invalid or you need to log in first.");
+            Environment.Exit(-1);
+        }
+
+        authToken = await authService.RefreshToken(authToken);
+        if (authToken == null)
+        {
+            Console.WriteLine("Failed to refresh authentication token. Please log in again.");
+            Environment.Exit(-1);
+        }
+
+
+        var httpClient = new HttpClient
+        {
+            BaseAddress = new Uri($"{options.Protocol}://{options.Host}:{options.Port}")
+        };
+        httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", authToken.AccessToken);
+
+        return new DCUWeatherService(httpClient);
+    }
+
+    private static DCUAuthService GenerateAuthService(BaseOptions options)
+    {
+        return new DCUAuthService(new HttpClient
         {
             BaseAddress = new Uri($"{options.Protocol}://{options.Host}:{options.Port}")
         });
     }
 
-    private static void PrintResultsInSpecifiedOutput(object? toPrint, BaseOptions options)
+    private static void PrintResultsInSpecifiedOutput(object? toPrint, BaseWeatherOptions options)
     {
         switch (options.Output)
         {
