@@ -1,13 +1,13 @@
 using System.Net.Http.Json;
 using Common.Models;
 
-namespace WeatherCli.Services;
+namespace WeatherCli.Services.WeatherService;
 
-public class DCUWeatherService
+public class WeatherService : IWeatherService
 {
     private readonly HttpClient _httpClient;
 
-    public DCUWeatherService(HttpClient httpClient)
+    public WeatherService(HttpClient httpClient)
     {
         _httpClient = httpClient;
     }

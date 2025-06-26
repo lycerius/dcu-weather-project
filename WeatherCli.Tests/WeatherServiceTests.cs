@@ -3,18 +3,18 @@ using System.Text;
 using Common.Models;
 using Moq;
 using Moq.Protected;
-using WeatherCli.Services;
 using System.Net;
 using System.Net.Mime;
+using WeatherCli.Services.WeatherService;
 
 namespace WeatherCli.Tests;
 
-public class DCUWeatherServiceTests
+public class WeatherServiceTests
 {
     private readonly Mock<HttpMessageHandler> _httpClientHandler;
     private readonly HttpClient _httpClient;
 
-    public DCUWeatherServiceTests()
+    public WeatherServiceTests()
     {
         _httpClientHandler = new Mock<HttpMessageHandler>();
         _httpClient = new HttpClient(_httpClientHandler.Object)
@@ -54,7 +54,7 @@ public class DCUWeatherServiceTests
                 Content = new StringContent(json, Encoding.UTF8, MediaTypeNames.Application.Json)
             });
 
-        var service = new DCUWeatherService(_httpClient);
+        var service = new WeatherService(_httpClient);
 
         // Act
         var result = await service.GetCurrentWeatherForZipCode("90210", TemperatureUnit.C);
@@ -96,7 +96,7 @@ public class DCUWeatherServiceTests
                 StatusCode = HttpStatusCode.NotFound
             });
 
-        var service = new DCUWeatherService(_httpClient);
+        var service = new WeatherService(_httpClient);
 
         // Act
         var result = await service.GetCurrentWeatherForZipCode("00000", TemperatureUnit.F);
@@ -148,7 +148,7 @@ public class DCUWeatherServiceTests
                 Content = new StringContent(json, Encoding.UTF8, MediaTypeNames.Application.Json)
             });
 
-        var service = new DCUWeatherService(_httpClient);
+        var service = new WeatherService(_httpClient);
 
         // Act
         var result = await service.GetAverageWeather("90210", TemperatureUnit.F, 7);
@@ -190,7 +190,7 @@ public class DCUWeatherServiceTests
                 StatusCode = HttpStatusCode.NotFound
             });
 
-        var service = new DCUWeatherService(_httpClient);
+        var service = new WeatherService(_httpClient);
 
         // Act
         var result = await service.GetAverageWeather("00000", TemperatureUnit.C, 3);
@@ -224,7 +224,7 @@ public class DCUWeatherServiceTests
             )
             .ThrowsAsync(new HttpRequestException("Network error"));
 
-        var service = new DCUWeatherService(_httpClient);
+        var service = new WeatherService(_httpClient);
 
         // Act & Assert
         Assert.Null(await service.GetCurrentWeatherForZipCode("90210", TemperatureUnit.C));
@@ -243,7 +243,7 @@ public class DCUWeatherServiceTests
             )
             .ThrowsAsync(new HttpRequestException("Network error"));
 
-        var service = new DCUWeatherService(_httpClient);
+        var service = new WeatherService(_httpClient);
 
         // Act & Assert
        Assert.Null(await service.GetCurrentWeatherForZipCode("90210", TemperatureUnit.C));

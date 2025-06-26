@@ -5,22 +5,25 @@ using System.Text.Json;
 using Moq;
 using Moq.Protected;
 using WeatherCli.Models;
-using WeatherCli.Services;
+using WeatherCli.Services.CredentialStorage;
+using WeatherCli.Services.WeatherAuthService;
 
 namespace WeatherCli.Tests;
 
-public class DCUAuthServiceTests
+public class AuthServiceTests
 {
     private readonly Mock<HttpMessageHandler> _httpClientHandler;
     private readonly HttpClient _httpClient;
+    private readonly Mock<ICredentialStorage> _credentialStorage;
 
-    public DCUAuthServiceTests()
+    public AuthServiceTests()
     {
         _httpClientHandler = new Mock<HttpMessageHandler>();
         _httpClient = new HttpClient(_httpClientHandler.Object)
         {
             BaseAddress = new Uri("https://localhost:1234")
         };
+        _credentialStorage = new Mock<ICredentialStorage>();
     }
 
     [Fact]
@@ -40,7 +43,7 @@ public class DCUAuthServiceTests
             )
             .ReturnsAsync(new HttpResponseMessage(HttpStatusCode.OK));
 
-        var service = new DCUAuthService(_httpClient);
+        var service = new WeatherAuthService(_httpClient, _credentialStorage.Object);
 
         // Act
         var result = await service.RegisterUser("test@example.com", "password");
@@ -77,7 +80,7 @@ public class DCUAuthServiceTests
                 Content = new StringContent("fail", Encoding.UTF8, MediaTypeNames.Text.Plain)
             });
 
-        var service = new DCUAuthService(_httpClient);
+        var service = new WeatherAuthService(_httpClient, _credentialStorage.Object);
 
         // Act
         var result = await service.RegisterUser("fail@example.com", "password");
@@ -99,7 +102,7 @@ public class DCUAuthServiceTests
     }
 
     [Fact]
-    public async Task LoginUser_ShouldReturnTrue_AndWriteCredentials_OnSuccess()
+    public async Task LoginUser_ShouldReturnTrue_AndSaveCredentials_OnSuccess()
     {
         // Arrange
         var authToken = new AuthToken { AccessToken = "abc", RefreshToken = "def" };
@@ -121,24 +124,20 @@ public class DCUAuthServiceTests
                 Content = new StringContent(json, Encoding.UTF8, MediaTypeNames.Application.Json)
             });
 
-        var service = new DCUAuthService(_httpClient);
+        var service = new WeatherAuthService(_httpClient, _credentialStorage.Object);
 
-        // Clean up before test
-        if (File.Exists(".credentials.txt"))
-            File.Delete(".credentials.txt");
+        _credentialStorage.Setup(s => s.ClearToken());
+        _credentialStorage.Setup(s => s.SaveToken(It.IsAny<AuthToken>()));
 
         // Act
         var result = await service.LoginUser("test@example.com", "password");
 
         // Assert
         Assert.True(result);
-        Assert.True(File.Exists(".credentials.txt"));
-        var fileContent = await File.ReadAllTextAsync(".credentials.txt");
-        var tokenFromFile = JsonSerializer.Deserialize<AuthToken>(fileContent);
-        Assert.Equal(authToken.AccessToken, tokenFromFile!.AccessToken);
-        Assert.Equal(authToken.RefreshToken, tokenFromFile.RefreshToken);
+        _credentialStorage.Verify(s => s.ClearToken(), Times.Once());
+        _credentialStorage.Verify(s => s.SaveToken(It.Is<AuthToken>(t => t.AccessToken == "abc" && t.RefreshToken == "def")), Times.Once());
 
-        // Verify
+        // Verify HTTP
         _httpClientHandler.Protected().Verify(
             "SendAsync",
             Times.Once(),
@@ -149,9 +148,6 @@ public class DCUAuthServiceTests
             ),
             ItExpr.IsAny<CancellationToken>()
         );
-
-        // Clean up after test
-        File.Delete(".credentials.txt");
     }
 
     [Fact]
@@ -170,20 +166,19 @@ public class DCUAuthServiceTests
                 Content = new StringContent("fail", Encoding.UTF8, MediaTypeNames.Text.Plain)
             });
 
-        var service = new DCUAuthService(_httpClient);
+        var service = new WeatherAuthService(_httpClient, _credentialStorage.Object);
 
-        // Clean up before test
-        if (File.Exists(".credentials.txt"))
-            File.Delete(".credentials.txt");
+        _credentialStorage.Setup(s => s.ClearToken());
 
         // Act
         var result = await service.LoginUser("fail@example.com", "password");
 
         // Assert
         Assert.False(result);
-        Assert.False(File.Exists(".credentials.txt"));
+        _credentialStorage.Verify(s => s.ClearToken(), Times.Once());
+        _credentialStorage.Verify(s => s.SaveToken(It.IsAny<AuthToken>()), Times.Never());
 
-        // Verify
+        // Verify HTTP
         _httpClientHandler.Protected().Verify(
             "SendAsync",
             Times.Once(),
@@ -201,9 +196,9 @@ public class DCUAuthServiceTests
     {
         // Arrange
         var authToken = new AuthToken { AccessToken = "abc", RefreshToken = "def" };
-        await File.WriteAllTextAsync(".credentials.txt", JsonSerializer.Serialize(authToken));
+        _credentialStorage.Setup(s => s.GetToken()).Returns(authToken);
 
-        var service = new DCUAuthService(_httpClient);
+        var service = new WeatherAuthService(_httpClient, _credentialStorage.Object);
 
         // Act
         var result = await service.GetBearerToken();
@@ -212,29 +207,23 @@ public class DCUAuthServiceTests
         Assert.NotNull(result);
         Assert.Equal(authToken.AccessToken, result!.AccessToken);
         Assert.Equal(authToken.RefreshToken, result.RefreshToken);
-
-        // No HTTP call to verify
-
-        // Clean up
-        File.Delete(".credentials.txt");
+        _credentialStorage.Verify(s => s.GetToken(), Times.Once());
     }
 
     [Fact]
-    public async Task GetBearerToken_ShouldReturnNull_WhenNoCredentialsFile()
+    public async Task GetBearerToken_ShouldReturnNull_WhenNoCredentials()
     {
         // Arrange
-        if (File.Exists(".credentials.txt"))
-            File.Delete(".credentials.txt");
+        _credentialStorage.Setup(s => s.GetToken()).Returns((AuthToken?)null);
 
-        var service = new DCUAuthService(_httpClient);
+        var service = new WeatherAuthService(_httpClient, _credentialStorage.Object);
 
         // Act
         var result = await service.GetBearerToken();
 
         // Assert
         Assert.Null(result);
-
-        // No HTTP call to verify
+        _credentialStorage.Verify(s => s.GetToken(), Times.Once());
     }
 
     [Fact]
@@ -261,10 +250,9 @@ public class DCUAuthServiceTests
                 Content = new StringContent(json, Encoding.UTF8, MediaTypeNames.Application.Json)
             });
 
-        var service = new DCUAuthService(_httpClient);
+        _credentialStorage.Setup(s => s.SaveToken(It.IsAny<AuthToken>()));
 
-        // Write old token to file
-        await File.WriteAllTextAsync(".credentials.txt", JsonSerializer.Serialize(oldToken));
+        var service = new WeatherAuthService(_httpClient, _credentialStorage.Object);
 
         // Act
         var result = await service.RefreshToken(oldToken);
@@ -273,13 +261,9 @@ public class DCUAuthServiceTests
         Assert.NotNull(result);
         Assert.Equal(newToken.AccessToken, result!.AccessToken);
         Assert.Equal(newToken.RefreshToken, result.RefreshToken);
+        _credentialStorage.Verify(s => s.SaveToken(It.Is<AuthToken>(t => t.AccessToken == "new" && t.RefreshToken == "refresh2")), Times.Once());
 
-        // File should be updated
-        var fileContent = await File.ReadAllTextAsync(".credentials.txt");
-        var tokenFromFile = JsonSerializer.Deserialize<AuthToken>(fileContent);
-        Assert.Equal(newToken.AccessToken, tokenFromFile!.AccessToken);
-
-        // Verify
+        // Verify HTTP
         _httpClientHandler.Protected().Verify(
             "SendAsync",
             Times.Once(),
@@ -290,9 +274,6 @@ public class DCUAuthServiceTests
             ),
             ItExpr.IsAny<CancellationToken>()
         );
-
-        // Clean up
-        File.Delete(".credentials.txt");
     }
 
     [Fact]
@@ -313,23 +294,16 @@ public class DCUAuthServiceTests
                 Content = new StringContent("fail", Encoding.UTF8, MediaTypeNames.Text.Plain)
             });
 
-        var service = new DCUAuthService(_httpClient);
-
-        // Write old token to file
-        await File.WriteAllTextAsync(".credentials.txt", JsonSerializer.Serialize(oldToken));
+        var service = new WeatherAuthService(_httpClient, _credentialStorage.Object);
 
         // Act
         var result = await service.RefreshToken(oldToken);
 
         // Assert
         Assert.Null(result);
+        _credentialStorage.Verify(s => s.SaveToken(It.IsAny<AuthToken>()), Times.Never());
 
-        // File should remain unchanged
-        var fileContent = await File.ReadAllTextAsync(".credentials.txt");
-        var tokenFromFile = JsonSerializer.Deserialize<AuthToken>(fileContent);
-        Assert.Equal(oldToken.AccessToken, tokenFromFile!.AccessToken);
-
-        // Verify
+        // Verify HTTP
         _httpClientHandler.Protected().Verify(
             "SendAsync",
             Times.Once(),
@@ -340,8 +314,5 @@ public class DCUAuthServiceTests
             ),
             ItExpr.IsAny<CancellationToken>()
         );
-
-        // Clean up
-        File.Delete(".credentials.txt");
     }
 }

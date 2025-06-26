@@ -2,8 +2,9 @@
 using System.Text.Json;
 using CommandLine;
 using Common.Models;
-using WeatherCli.Models;
-using WeatherCli.Services;
+using WeatherCli.Services.CredentialStorage;
+using WeatherCli.Services.WeatherAuthService;
+using WeatherCli.Services.WeatherService;
 using YamlDotNet.Serialization;
 using YamlDotNet.Serialization.NamingConventions;
 
@@ -120,7 +121,7 @@ public class Program
         PrintResultsInSpecifiedOutput(results, options);
     }
 
-    private static async Task<DCUWeatherService> GenerateWeatherService(BaseOptions options)
+    private static async Task<IWeatherService> GenerateWeatherService(BaseOptions options)
     {
         var authService = GenerateAuthService(options);
         var authToken = await authService.GetBearerToken();
@@ -145,15 +146,15 @@ public class Program
         };
         httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", authToken.AccessToken);
 
-        return new DCUWeatherService(httpClient);
+        return new WeatherService(httpClient);
     }
 
-    private static DCUAuthService GenerateAuthService(BaseOptions options)
+    private static WeatherAuthService GenerateAuthService(BaseOptions options)
     {
-        return new DCUAuthService(new HttpClient
+        return new WeatherAuthService(new HttpClient
         {
             BaseAddress = new Uri($"{options.Protocol}://{options.Host}:{options.Port}")
-        });
+        }, new FileCredentialStorage());
     }
 
     private static void PrintResultsInSpecifiedOutput(object? toPrint, BaseWeatherOptions options)
