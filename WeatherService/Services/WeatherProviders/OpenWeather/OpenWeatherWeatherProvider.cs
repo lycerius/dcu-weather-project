@@ -1,5 +1,5 @@
-using System.Text.Json;
 using Common.Models;
+using Microsoft.Extensions.Caching.Memory;
 using WeatherService.Exceptions;
 using WeatherService.Services.WeatherProviders.OpenWeather.Models;
 
@@ -10,9 +10,11 @@ public class OpenWeatherWeatherProvider : IWeatherProvider
     private readonly IConfiguration _configuration;
     private readonly HttpClient _httpClient;
     private readonly TemperatureUnitsConverter _temperatureUnitsConverter;
+    private readonly IMemoryCache _memoryCache;
 
-    public OpenWeatherWeatherProvider(IConfiguration configuration, TemperatureUnitsConverter temperatureUnitsConverter, IHttpClientFactory httpClientFactory)
+    public OpenWeatherWeatherProvider(IConfiguration configuration, TemperatureUnitsConverter temperatureUnitsConverter, IHttpClientFactory httpClientFactory, IMemoryCache memoryCache)
     {
+        _memoryCache = memoryCache;
         _configuration = configuration;
         _httpClient = httpClientFactory.CreateClient("openWeatherClient");
         _temperatureUnitsConverter = temperatureUnitsConverter;
@@ -152,10 +154,24 @@ public class OpenWeatherWeatherProvider : IWeatherProvider
     /// <returns>The latitude and longitude for the given zip</returns>
     private async Task<GeocodeResult?> GetLatAndLongForZip(string zip)
     {
-        //TODO: This should be cached
-        var uriToGet = WithAppIdInUri($"geo/1.0/zip?zip={zip},US");
-        return await _httpClient.GetFromJsonAsync<GeocodeResult>(uriToGet);
+        if (!_memoryCache.TryGetValue(zip, out GeocodeResult? geocodeResult))
+        {
+            var uriToGet = WithAppIdInUri($"geo/1.0/zip?zip={zip},US");
+            geocodeResult = await _httpClient.GetFromJsonAsync<GeocodeResult>(uriToGet);
 
+            if (geocodeResult == null)
+            {
+                return null;
+            }
+
+            // Cache the result for 10 minutes
+            _memoryCache.Set(zip, geocodeResult, new MemoryCacheEntryOptions
+            {
+                AbsoluteExpirationRelativeToNow = TimeSpan.FromDays(1),
+            });
+        }
+
+        return geocodeResult;
     }
 
     private string WithAppIdInUri(string baseUri)

@@ -7,9 +7,11 @@ using System.Text.Json;
 using Common.Models;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc.Formatters;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using Moq;
 using Moq.Protected;
+using WeatherService.Exceptions;
 using WeatherService.Services;
 using WeatherService.Services.WeatherProviders.OpenWeather;
 using WeatherService.Services.WeatherProviders.OpenWeather.Models;
@@ -20,6 +22,7 @@ public class OpenWeatherWeatherProviderTests
     private readonly Mock<IHttpClientFactory> _httpClientFactory;
     private readonly Mock<TemperatureUnitsConverter> _temperatureUnitsConverter;
     private readonly Mock<HttpMessageHandler> _httpClientHandler;
+    private readonly Mock<IMemoryCache> _memoryCache;
 
     public OpenWeatherWeatherProviderTests()
     {
@@ -27,12 +30,20 @@ public class OpenWeatherWeatherProviderTests
         _httpClientFactory = new Mock<IHttpClientFactory>();
         _temperatureUnitsConverter = new Mock<TemperatureUnitsConverter>();
         _httpClientHandler = new Mock<HttpMessageHandler>();
+        _memoryCache = new Mock<IMemoryCache>();
+
+        // Mock IMemoryCache.CreateEntry to return a mock ICacheEntry
+        var mockCacheEntry = new Mock<ICacheEntry>();
+        _memoryCache.Setup(m => m.CreateEntry(It.IsAny<object>()))
+            .Returns(mockCacheEntry.Object);
 
         _configuration.Setup(c => c["DcuWeatherApp:OpenWeatherApiKey"]).Returns("test-api-key");
         _httpClientFactory.Setup(f => f.CreateClient("openWeatherClient")).Returns(new HttpClient(_httpClientHandler.Object, false)
         {
             BaseAddress = new Uri("https://api.openweathermap.org/")
         });
+
+
     }
 
     [Fact]
@@ -66,7 +77,7 @@ public class OpenWeatherWeatherProviderTests
             Lon = -74.0060
         });
 
-        var openWeatherWeatherProvider = new OpenWeatherWeatherProvider(_configuration.Object, _temperatureUnitsConverter.Object, _httpClientFactory.Object);
+        var openWeatherWeatherProvider = CreateOpenWeatherWeatherProvider();
         //Act
         var result = await openWeatherWeatherProvider.GetCurrentWeatherForZipCode("12345", TemperatureUnit.C);
         //Assert
@@ -104,7 +115,7 @@ public class OpenWeatherWeatherProviderTests
     {
         //Arrange
         MockGeoCodeResponse("invalid-zip", null);
-        var openWeatherWeatherProvider = new OpenWeatherWeatherProvider(_configuration.Object, _temperatureUnitsConverter.Object, _httpClientFactory.Object);
+        var openWeatherWeatherProvider = CreateOpenWeatherWeatherProvider();
         //Act
         var result = await openWeatherWeatherProvider.GetCurrentWeatherForZipCode("invalid-zip", TemperatureUnit.C);
         //Assert
@@ -134,7 +145,7 @@ public class OpenWeatherWeatherProviderTests
         });
 
         MockWeatherResponse(null);
-        var openWeatherWeatherProvider = new OpenWeatherWeatherProvider(_configuration.Object, _temperatureUnitsConverter.Object, _httpClientFactory.Object);
+        var openWeatherWeatherProvider = CreateOpenWeatherWeatherProvider();
         //Act
         var result = await openWeatherWeatherProvider.GetCurrentWeatherForZipCode("12345", TemperatureUnit.C);
         //Assert
@@ -167,7 +178,7 @@ public class OpenWeatherWeatherProviderTests
         // Arrange: MockGeoCodeResponse returns null for this zip
         MockGeoCodeResponse("99999", null);
 
-        var openWeatherWeatherProvider = new OpenWeatherWeatherProvider(_configuration.Object, _temperatureUnitsConverter.Object, _httpClientFactory.Object);
+        var openWeatherWeatherProvider = CreateOpenWeatherWeatherProvider();
 
         // Act
         var result = await openWeatherWeatherProvider.GetCurrentWeatherForZipCode("99999", TemperatureUnit.C);
@@ -225,7 +236,7 @@ public class OpenWeatherWeatherProviderTests
 
         _temperatureUnitsConverter.Setup(c => c.ConvertKelvinToUnits(295.15, TemperatureUnit.C)).Returns(22.0);
 
-        var openWeatherWeatherProvider = new OpenWeatherWeatherProvider(_configuration.Object, _temperatureUnitsConverter.Object, _httpClientFactory.Object);
+        var openWeatherWeatherProvider = CreateOpenWeatherWeatherProvider();
 
         // Act
         var result = await openWeatherWeatherProvider.GetCurrentWeatherForZipCode("12345", TemperatureUnit.C);
@@ -298,7 +309,7 @@ public class OpenWeatherWeatherProviderTests
             Lon = -74.0060
         });
 
-        var openWeatherWeatherProvider = new OpenWeatherWeatherProvider(_configuration.Object, _temperatureUnitsConverter.Object, _httpClientFactory.Object);
+        var openWeatherWeatherProvider = CreateOpenWeatherWeatherProvider();
 
         // Act
         var result = await openWeatherWeatherProvider.GetAverageWeatherForZipCode("12345", 2, TemperatureUnit.C);
@@ -326,7 +337,7 @@ public class OpenWeatherWeatherProviderTests
     {
         // Arrange
         MockGeoCodeResponse("invalid-zip", null);
-        var openWeatherWeatherProvider = new OpenWeatherWeatherProvider(_configuration.Object, _temperatureUnitsConverter.Object, _httpClientFactory.Object);
+        var openWeatherWeatherProvider = CreateOpenWeatherWeatherProvider();
 
         // Act
         var result = await openWeatherWeatherProvider.GetAverageWeatherForZipCode("invalid-zip", 2, TemperatureUnit.C);
@@ -339,6 +350,199 @@ public class OpenWeatherWeatherProviderTests
             "SendAsync",
             Times.AtLeastOnce(),
             ItExpr.Is<HttpRequestMessage>(req => req.RequestUri != null && req.RequestUri.ToString().Contains("geo/1.0/zip?zip=invalid-zip,US")),
+            ItExpr.IsAny<CancellationToken>()
+        );
+    }
+
+    [Fact]
+    public async Task GetCurrentWeatherForZipCode_ShouldCacheZipcode()
+    {
+        // Arrange
+        MockGeoCodeResponse("12345", new GeocodeResult
+        {
+            Country = "US",
+            Name = "Test City",
+            Lat = 40.7128,
+            Lon = -74.0060
+        });
+
+        MockWeatherResponse(new OpenWeatherResult
+        {
+            Lat = 40.7128,
+            Lon = -74.0060,
+            Current = new CurrentWeatherReport
+            {
+                Dt = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+                Temp = 295.15,
+            },
+            Daily = [
+                new ()
+                {
+                    Dt = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+                    Rain = 0.0,
+                    Temp = new Temperature() { Day = 295.15, Eve = 293.15, Morn = 290.15, Night = 292.15 }
+                }
+            ]
+        });
+
+        _temperatureUnitsConverter.Setup(c => c.ConvertKelvinToUnits(295.15, TemperatureUnit.C)).Returns(22.0);
+
+        var openWeatherWeatherProvider = CreateOpenWeatherWeatherProvider();
+
+        // Act
+        var result = await openWeatherWeatherProvider.GetCurrentWeatherForZipCode("12345", TemperatureUnit.C);
+        // Assert
+        Assert.NotNull(result);
+        Assert.Equal(22.0, result.CurrentTemperature);
+        Assert.Equal(40.7128, result.Lat);
+        Assert.Equal(-74.0060, result.Long);
+        Assert.Equal(TemperatureUnit.C, result.Unit);
+        Assert.False(result.RainPossibleToday);
+
+        // Verify that the geocode request was made
+        _httpClientHandler.Protected().Verify(
+            "SendAsync",
+            Times.Once(),
+            ItExpr.Is<HttpRequestMessage>(req =>
+                req.RequestUri != null &&
+                req.RequestUri.ToString().StartsWith("https://api.openweathermap.org/geo/1.0/zip?zip=12345,US&appid=test-api-key")
+            ),
+            ItExpr.IsAny<CancellationToken>()
+        );
+
+        // Verify that the zipcode was cached
+        _memoryCache.Verify(m => m.CreateEntry(
+            It.Is<object>(key => key.ToString() == "12345")
+        ), Times.Once());
+    }
+
+    [Fact]
+    public async Task GetAverageWeatherForZipCode_ShouldCacheZipcode()
+    {
+        // Arrange
+        MockGeoCodeResponse("12345", new GeocodeResult
+        {
+            Country = "US",
+            Name = "Test City",
+            Lat = 40.7128,
+            Lon = -74.0060
+        });
+
+        MockWeatherResponse(new OpenWeatherResult
+        {
+            Lat = 40.7128,
+            Lon = -74.0060,
+            Current = new CurrentWeatherReport
+            {
+                Dt = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+                Temp = 295.15,
+            },
+            Daily = [
+                new ()
+                {
+                    Dt = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+                    Rain = 0.0,
+                    Temp = new Temperature() { Day = 295.15, Eve = 293.15, Morn = 290.15, Night = 292.15 }
+                }
+            ]
+        });
+
+        _temperatureUnitsConverter.Setup(c => c.ConvertKelvinToUnits(295.15, TemperatureUnit.C)).Returns(22.0);
+
+        var openWeatherWeatherProvider = CreateOpenWeatherWeatherProvider();
+
+        // Act
+        var result = await openWeatherWeatherProvider.GetAverageWeatherForZipCode("12345", 2, TemperatureUnit.C);
+        // Verify that the geocode request was made
+        _httpClientHandler.Protected().Verify(
+            "SendAsync",
+            Times.Once(),
+            ItExpr.Is<HttpRequestMessage>(req =>
+                req.RequestUri != null &&
+                req.RequestUri.ToString().StartsWith("https://api.openweathermap.org/geo/1.0/zip?zip=12345,US&appid=test-api-key")
+            ),
+            ItExpr.IsAny<CancellationToken>()
+        );
+
+        // Verify that the zipcode was cached
+        _memoryCache.Verify(m => m.CreateEntry(
+            "12345"
+        ), Times.Once());
+    }
+
+    [Fact]
+    public async Task GetCurrentWeatherForZipCode_ShouldUseCachedEntry_IfExists()
+    {
+        object something;
+        // Arrange
+        GeocodeResult cachedGeocodeResult = new GeocodeResult
+        {
+            Country = "US",
+            Name = "Cached City",
+            Lat = 40.7128,
+            Lon = -74.0060
+        };
+
+        _memoryCache.Setup(m => m.TryGetValue("12345", out It.Ref<object>.IsAny))
+        .Callback((object key, out object value) =>
+        {
+            value = cachedGeocodeResult;
+        })
+        .Returns(true);
+
+        MockWeatherResponse(new OpenWeatherResult
+        {
+            Lat = 40.7128,
+            Lon = -74.0060,
+            Current = new CurrentWeatherReport
+            {
+                Dt = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+                Temp = 295.15,
+            },
+            Daily = [
+                new ()
+                {
+                    Dt = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+                    Rain = 0.0,
+                    Temp = new Temperature() { Day = 295.15, Eve = 293.15, Morn = 290.15, Night = 292.15 }
+                }
+            ]
+        });
+
+        _temperatureUnitsConverter.Setup(c => c.ConvertKelvinToUnits(295.15, TemperatureUnit.C)).Returns(22.0);
+
+        var openWeatherWeatherProvider = CreateOpenWeatherWeatherProvider();
+
+        // Act
+        var result = await openWeatherWeatherProvider.GetCurrentWeatherForZipCode("12345", TemperatureUnit.C);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Equal(22.0, result.CurrentTemperature);
+        Assert.Equal(40.7128, result.Lat);
+        Assert.Equal(-74.0060, result.Long);
+        Assert.Equal(TemperatureUnit.C, result.Unit);
+        Assert.False(result.RainPossibleToday);
+
+        // Verify that the geocode request was not made since it was cached
+        _httpClientHandler.Protected().Verify(
+            "SendAsync",
+            Times.Never(),
+            ItExpr.Is<HttpRequestMessage>(req =>
+                req.RequestUri != null &&
+                req.RequestUri.ToString().StartsWith("https://api.openweathermap.org/geo/1.0/zip?zip=12345,US&appid=test-api-key")
+            ),
+            ItExpr.IsAny<CancellationToken>()
+        );
+
+        // Verify that the weather request was made
+        _httpClientHandler.Protected().Verify(
+            "SendAsync",
+            Times.Once(),
+            ItExpr.Is<HttpRequestMessage>(req =>
+                req.RequestUri != null &&
+                req.RequestUri.ToString().StartsWith("https://api.openweathermap.org/data/3.0/onecall?lat=40.7128&lon=-74.006&appid=test-api-key")
+            ),
             ItExpr.IsAny<CancellationToken>()
         );
     }
@@ -357,7 +561,7 @@ public class OpenWeatherWeatherProviderTests
 
         MockWeatherResponse(null);
 
-        var openWeatherWeatherProvider = new OpenWeatherWeatherProvider(_configuration.Object, _temperatureUnitsConverter.Object, _httpClientFactory.Object);
+        var openWeatherWeatherProvider = CreateOpenWeatherWeatherProvider();
 
         // Act
         var result = await openWeatherWeatherProvider.GetAverageWeatherForZipCode("12345", 2, TemperatureUnit.C);
@@ -387,10 +591,10 @@ public class OpenWeatherWeatherProviderTests
             )
             .ThrowsAsync(new HttpRequestException("Some error", null, System.Net.HttpStatusCode.InternalServerError));
 
-        var openWeatherWeatherProvider = new OpenWeatherWeatherProvider(_configuration.Object, _temperatureUnitsConverter.Object, _httpClientFactory.Object);
+        var openWeatherWeatherProvider = CreateOpenWeatherWeatherProvider();
 
         // Act & Assert
-        await Assert.ThrowsAsync<HttpRequestException>(() => openWeatherWeatherProvider.GetCurrentWeatherForZipCode("12345", TemperatureUnit.C));
+        await Assert.ThrowsAsync<WeatherProviderException>(() => openWeatherWeatherProvider.GetCurrentWeatherForZipCode("12345", TemperatureUnit.C));
 
         // Verify
         _httpClientHandler.Protected().Verify(
@@ -414,10 +618,10 @@ public class OpenWeatherWeatherProviderTests
             )
             .ThrowsAsync(new HttpRequestException("Some error", null, System.Net.HttpStatusCode.InternalServerError));
 
-        var openWeatherWeatherProvider = new OpenWeatherWeatherProvider(_configuration.Object, _temperatureUnitsConverter.Object, _httpClientFactory.Object);
+        var openWeatherWeatherProvider = CreateOpenWeatherWeatherProvider();
 
         // Act & Assert
-        await Assert.ThrowsAsync<HttpRequestException>(() => openWeatherWeatherProvider.GetAverageWeatherForZipCode("12345", 2, TemperatureUnit.C));
+        await Assert.ThrowsAsync<WeatherProviderException>(() => openWeatherWeatherProvider.GetAverageWeatherForZipCode("12345", 2, TemperatureUnit.C));
 
         // Verify
         _httpClientHandler.Protected().Verify(
@@ -428,28 +632,14 @@ public class OpenWeatherWeatherProviderTests
         );
     }
 
-    [Fact]
-    public void WithAppIdInUri_ShouldAppendApiKey()
+    private OpenWeatherWeatherProvider CreateOpenWeatherWeatherProvider()
     {
-        // Arrange
-        var provider = new OpenWeatherWeatherProvider(_configuration.Object, _temperatureUnitsConverter.Object, _httpClientFactory.Object);
-        var baseUri = "testuri";
-        var expected = "testuri&appid=test-api-key";
-
-        // Act
-        var result = InvokePrivate<string>(provider, "WithAppIdInUri", baseUri);
-
-        // Assert
-        Assert.Equal(expected, result);
-
-        // No HTTP or converter calls to verify for this test
-    }
-
-    // Helper to invoke private methods
-    private static T InvokePrivate<T>(object obj, string methodName, params object[] parameters)
-    {
-        var method = obj.GetType().GetMethod(methodName, System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-        return (T)method.Invoke(obj, parameters);
+        return new OpenWeatherWeatherProvider(
+            _configuration.Object,
+            _temperatureUnitsConverter.Object,
+            _httpClientFactory.Object,
+            _memoryCache.Object
+        );
     }
 
     private void MockGeoCodeResponse(string zip, GeocodeResult? geocodeResult)

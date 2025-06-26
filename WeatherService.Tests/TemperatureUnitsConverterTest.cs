@@ -32,7 +32,7 @@ public class TemperatureUnitsConverterTest
         var converter = new TemperatureUnitsConverter();
 
         // Act & Assert
-        var ex = Assert.Throws<Exception>(() => converter.ConvertKelvinToUnits(273.15, (TemperatureUnit)999));
+        var ex = Assert.Throws<NotSupportedException>(() => converter.ConvertKelvinToUnits(273.15, (TemperatureUnit)999));
         Assert.Contains("Unknown output units", ex.Message);
     }
 }
