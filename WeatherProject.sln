@@ -11,6 +11,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WeatherCli", "WeatherCli\We
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WeatherService.Tests", "WeatherService.Tests\WeatherService.Tests.csproj", "{C3E5D0F7-114E-4ADA-83E3-8062B1A76973}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WeatherCli.Tests", "WeatherCli.Tests\WeatherCli.Tests.csproj", "{CF6689B9-FB65-42FD-AA98-EC2E00080B1B}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -69,6 +71,18 @@ Global
 		{C3E5D0F7-114E-4ADA-83E3-8062B1A76973}.Release|x64.Build.0 = Release|Any CPU
 		{C3E5D0F7-114E-4ADA-83E3-8062B1A76973}.Release|x86.ActiveCfg = Release|Any CPU
 		{C3E5D0F7-114E-4ADA-83E3-8062B1A76973}.Release|x86.Build.0 = Release|Any CPU
+		{CF6689B9-FB65-42FD-AA98-EC2E00080B1B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CF6689B9-FB65-42FD-AA98-EC2E00080B1B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CF6689B9-FB65-42FD-AA98-EC2E00080B1B}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{CF6689B9-FB65-42FD-AA98-EC2E00080B1B}.Debug|x64.Build.0 = Debug|Any CPU
+		{CF6689B9-FB65-42FD-AA98-EC2E00080B1B}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{CF6689B9-FB65-42FD-AA98-EC2E00080B1B}.Debug|x86.Build.0 = Debug|Any CPU
+		{CF6689B9-FB65-42FD-AA98-EC2E00080B1B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CF6689B9-FB65-42FD-AA98-EC2E00080B1B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{CF6689B9-FB65-42FD-AA98-EC2E00080B1B}.Release|x64.ActiveCfg = Release|Any CPU
+		{CF6689B9-FB65-42FD-AA98-EC2E00080B1B}.Release|x64.Build.0 = Release|Any CPU
+		{CF6689B9-FB65-42FD-AA98-EC2E00080B1B}.Release|x86.ActiveCfg = Release|Any CPU
+		{CF6689B9-FB65-42FD-AA98-EC2E00080B1B}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

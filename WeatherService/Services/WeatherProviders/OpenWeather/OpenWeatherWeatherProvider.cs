@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Common.Models;
 using WeatherService.Services.WeatherProviders.OpenWeather.Models;
 
@@ -68,10 +69,6 @@ public class OpenWeatherWeatherProvider : IWeatherProvider
             }
         }
 
-        if (zipToGeocode == null)
-        {
-            return null;
-        }
 
         OpenWeatherResult? weatherResult;
         try
@@ -102,7 +99,7 @@ public class OpenWeatherWeatherProvider : IWeatherProvider
     private bool GetRainPossibleToday(OpenWeatherResult rainCheck)
     {
         var today = rainCheck.Current.UtcDateTime.Date;
-        var todaysWeatherReport = rainCheck.Daily.Where(fw => fw.UtcDateTime.Date == today).First();
+        var todaysWeatherReport = rainCheck.Daily.Where(fw => fw.UtcDateTime.Date == today).FirstOrDefault();
         if (todaysWeatherReport == null)
         {
             return false;
@@ -151,6 +148,7 @@ public class OpenWeatherWeatherProvider : IWeatherProvider
         //TODO: This should be cached
         var uriToGet = WithAppIdInUri($"geo/1.0/zip?zip={zip},US");
         return await _httpClient.GetFromJsonAsync<GeocodeResult>(uriToGet);
+    
     }
 
     private string WithAppIdInUri(string baseUri)

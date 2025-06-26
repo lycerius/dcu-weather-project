@@ -5,25 +5,38 @@ namespace WeatherCli.Services;
 
 public class DCUWeatherService
 {
-    private readonly DCUWeatherServiceConfig _dcuWeatherServiceConfig;
     private readonly HttpClient _httpClient;
 
-    public DCUWeatherService(DCUWeatherServiceConfig dcuWeatherServiceConfig)
+    public DCUWeatherService(HttpClient httpClient)
     {
-        _dcuWeatherServiceConfig = dcuWeatherServiceConfig;
-        _httpClient = new HttpClient();
-        _httpClient.BaseAddress = new Uri(_dcuWeatherServiceConfig.BaseUrl);
+        _httpClient = httpClient;
     }
 
     public async Task<CurrentWeather?> GetCurrentWeatherForZipCode(string zipCode, TemperatureUnit temperatureUnit)
     {
         var urlToCall = $"/Weather/Current/{zipCode}?units={temperatureUnit}";
-        return await _httpClient.GetFromJsonAsync<CurrentWeather>(urlToCall);
+        try
+        {
+            return await _httpClient.GetFromJsonAsync<CurrentWeather>(urlToCall);
+        }
+        catch (HttpRequestException ex)
+        {
+            Console.WriteLine($"Error fetching current weather: {ex.Message}");
+            return null;
+        }
     }
 
     public async Task<AverageWeather?> GetAverageWeather(string zipCode, TemperatureUnit temperatureUnit, int timePeriodDays)
     {
         var urlToCall = $"/Weather/Average/{zipCode}?units={temperatureUnit}&timePeriod={timePeriodDays}";
-        return await _httpClient.GetFromJsonAsync<AverageWeather>(urlToCall);
+        try
+        {
+            return await _httpClient.GetFromJsonAsync<AverageWeather>(urlToCall);
+        }
+        catch (HttpRequestException ex)
+        {
+            Console.WriteLine($"Error fetching average weather: {ex.Message}");
+            return null;
+        }
     }
 }

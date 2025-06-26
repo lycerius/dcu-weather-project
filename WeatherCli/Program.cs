@@ -68,15 +68,10 @@ public class Program
 
     private static DCUWeatherService GenerateService(BaseOptions options)
     {
-        return new DCUWeatherService(GenerateConfig(options));
-    }
-
-    private static DCUWeatherServiceConfig GenerateConfig(BaseOptions options)
-    {
-        return new DCUWeatherServiceConfig
+        return new DCUWeatherService(new HttpClient
         {
-            BaseUrl = $"{options.Protocol}://{options.Host}:{options.Port}"
-        };
+            BaseAddress = new Uri($"{options.Protocol}://{options.Host}:{options.Port}")
+        });
     }
 
     private static void PrintResultsInSpecifiedOutput(object? toPrint, BaseOptions options)
