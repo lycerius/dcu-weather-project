@@ -10,7 +10,6 @@ using WeatherService.Services.WeatherProviders.OpenWeather;
 
 var builder = WebApplication.CreateBuilder(args);
 //Logging
-builder.Logging.ClearProviders();
 builder.Logging.AddConsole();
 
 //Auth Config
@@ -22,6 +21,8 @@ builder.Services.AddControllers().AddJsonOptions(options =>
 {
     options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
 });
+
+//Swagger config
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
 {

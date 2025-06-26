@@ -7,6 +7,7 @@ using Moq.Protected;
 using WeatherCli.Models;
 using WeatherCli.Services.CredentialStorage;
 using WeatherCli.Services.WeatherAuthService;
+using Microsoft.Extensions.Logging;
 
 namespace WeatherCli.Tests;
 
@@ -15,6 +16,8 @@ public class AuthServiceTests
     private readonly Mock<HttpMessageHandler> _httpClientHandler;
     private readonly HttpClient _httpClient;
     private readonly Mock<ICredentialStorage> _credentialStorage;
+    private readonly Mock<IHttpClientFactory> _httpClientFactory;
+    private readonly Mock<ILogger<WeatherAuthService>> _logger;
 
     public AuthServiceTests()
     {
@@ -24,6 +27,9 @@ public class AuthServiceTests
             BaseAddress = new Uri("https://localhost:1234")
         };
         _credentialStorage = new Mock<ICredentialStorage>();
+        _httpClientFactory = new Mock<IHttpClientFactory>();
+        _httpClientFactory.Setup(f => f.CreateClient(It.IsAny<string>())).Returns(_httpClient);
+        _logger = new Mock<ILogger<WeatherAuthService>>();
     }
 
     [Fact]
@@ -43,7 +49,7 @@ public class AuthServiceTests
             )
             .ReturnsAsync(new HttpResponseMessage(HttpStatusCode.OK));
 
-        var service = new WeatherAuthService(_httpClient, _credentialStorage.Object);
+        var service = new WeatherAuthService(_httpClientFactory.Object, _credentialStorage.Object, _logger.Object);
 
         // Act
         var result = await service.RegisterUser("test@example.com", "password");
@@ -80,7 +86,7 @@ public class AuthServiceTests
                 Content = new StringContent("fail", Encoding.UTF8, MediaTypeNames.Text.Plain)
             });
 
-        var service = new WeatherAuthService(_httpClient, _credentialStorage.Object);
+        var service = new WeatherAuthService(_httpClientFactory.Object, _credentialStorage.Object, _logger.Object);
 
         // Act
         var result = await service.RegisterUser("fail@example.com", "password");
@@ -124,7 +130,7 @@ public class AuthServiceTests
                 Content = new StringContent(json, Encoding.UTF8, MediaTypeNames.Application.Json)
             });
 
-        var service = new WeatherAuthService(_httpClient, _credentialStorage.Object);
+        var service = new WeatherAuthService(_httpClientFactory.Object, _credentialStorage.Object, _logger.Object);
 
         _credentialStorage.Setup(s => s.ClearToken());
         _credentialStorage.Setup(s => s.SaveToken(It.IsAny<AuthToken>()));
@@ -166,7 +172,7 @@ public class AuthServiceTests
                 Content = new StringContent("fail", Encoding.UTF8, MediaTypeNames.Text.Plain)
             });
 
-        var service = new WeatherAuthService(_httpClient, _credentialStorage.Object);
+        var service = new WeatherAuthService(_httpClientFactory.Object, _credentialStorage.Object, _logger.Object);
 
         _credentialStorage.Setup(s => s.ClearToken());
 
@@ -198,7 +204,7 @@ public class AuthServiceTests
         var authToken = new AuthToken { AccessToken = "abc", RefreshToken = "def" };
         _credentialStorage.Setup(s => s.GetToken()).Returns(authToken);
 
-        var service = new WeatherAuthService(_httpClient, _credentialStorage.Object);
+        var service = new WeatherAuthService(_httpClientFactory.Object, _credentialStorage.Object, _logger.Object);
 
         // Act
         var result = await service.GetBearerToken();
@@ -216,7 +222,7 @@ public class AuthServiceTests
         // Arrange
         _credentialStorage.Setup(s => s.GetToken()).Returns((AuthToken?)null);
 
-        var service = new WeatherAuthService(_httpClient, _credentialStorage.Object);
+        var service = new WeatherAuthService(_httpClientFactory.Object, _credentialStorage.Object, _logger.Object);
 
         // Act
         var result = await service.GetBearerToken();
@@ -252,7 +258,7 @@ public class AuthServiceTests
 
         _credentialStorage.Setup(s => s.SaveToken(It.IsAny<AuthToken>()));
 
-        var service = new WeatherAuthService(_httpClient, _credentialStorage.Object);
+        var service = new WeatherAuthService(_httpClientFactory.Object, _credentialStorage.Object, _logger.Object);
 
         // Act
         var result = await service.RefreshToken(oldToken);
@@ -294,7 +300,7 @@ public class AuthServiceTests
                 Content = new StringContent("fail", Encoding.UTF8, MediaTypeNames.Text.Plain)
             });
 
-        var service = new WeatherAuthService(_httpClient, _credentialStorage.Object);
+        var service = new WeatherAuthService(_httpClientFactory.Object, _credentialStorage.Object, _logger.Object);
 
         // Act
         var result = await service.RefreshToken(oldToken);

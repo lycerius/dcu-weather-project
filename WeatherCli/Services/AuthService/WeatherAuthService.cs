@@ -1,4 +1,5 @@
 using System.Net.Http.Json;
+using Microsoft.Extensions.Logging;
 using WeatherCli.Models;
 using WeatherCli.Services.CredentialStorage;
 
@@ -8,10 +9,12 @@ public class WeatherAuthService : IWeatherAuthService
 {
     private readonly HttpClient _httpClient;
     private readonly ICredentialStorage _credentialStorage;
+    private readonly ILogger<WeatherAuthService> _logger;
 
-    public WeatherAuthService(HttpClient httpClient, ICredentialStorage credentialStorage)
+    public WeatherAuthService(IHttpClientFactory httpClientFactory, ICredentialStorage credentialStorage, ILogger<WeatherAuthService> logger)
     {
-        _httpClient = httpClient;
+        _logger = logger;
+        _httpClient = httpClientFactory.CreateClient("weatherClient");
         _credentialStorage = credentialStorage;
     }
 
@@ -22,7 +25,7 @@ public class WeatherAuthService : IWeatherAuthService
         {
             return true;
         }
-        Console.WriteLine($"Error registering user: {response.StatusCode}.\n{await response.Content.ReadAsStringAsync()}");
+        _logger.LogError($"Error registering user: {response.StatusCode}.\n{await response.Content.ReadAsStringAsync()}");
         return false;
     }
 
@@ -37,18 +40,19 @@ public class WeatherAuthService : IWeatherAuthService
                 _credentialStorage.SaveToken(authToken);
             return true;
         }
-        Console.WriteLine($"Error logging in user: {response.StatusCode}.\n{await response.Content.ReadAsStringAsync()}");
+        _logger.LogError($"Error logging in user: {response.StatusCode}.\n{await response.Content.ReadAsStringAsync()}");
         return false;
     }
 
-    public Task<AuthToken?> GetBearerToken()
+    public async Task<AuthToken?> GetBearerToken()
     {
         var token = _credentialStorage.GetToken();
         if (token == null)
         {
-            Console.WriteLine("No credentials found. Please log in first.");
+            _logger.LogError("No credentials found. Please log in first.");
+            return null;
         }
-        return Task.FromResult(token);
+        return await RefreshToken(token);
     }
 
     public async Task<AuthToken?> RefreshToken(AuthToken authToken)
@@ -62,7 +66,7 @@ public class WeatherAuthService : IWeatherAuthService
             return newAuthToken;
         }
 
-        Console.WriteLine($"Error refreshing token: {response.StatusCode}.\n{await response.Content.ReadAsStringAsync()}");
+        _logger.LogError($"Error refreshing token: {response.StatusCode}.\n{await response.Content.ReadAsStringAsync()}");
         return null;
     }
 }

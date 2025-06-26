@@ -7,17 +7,17 @@ using WeatherService.Services.WeatherProviders;
 namespace WeatherService.Controllers;
 
 [ApiController]
-[Route("v1/[controller]")]
+[Route("v1/Weather")]
 [Authorize]
 public class WeatherControllerV1 : ControllerBase
 {
-    private readonly ILogger _logger;
+    private readonly ILogger<WeatherControllerV1> _logger;
     private readonly IWeatherProvider _weatherProvider;
     private readonly IValidator<GetCurrentWeatherQuery> _currentWeatherValidator;
     private readonly IValidator<GetAverageWeatherQuery> _averageWeatherValidator;
 
     public WeatherControllerV1(
-        ILogger logger,
+        ILogger<WeatherControllerV1> logger,
         IWeatherProvider weatherProvider,
         IValidator<GetCurrentWeatherQuery> currentWeatherValidator,
         IValidator<GetAverageWeatherQuery> averageWeatherValidator)

@@ -12,14 +12,14 @@ namespace WeatherService.Tests;
 public class WeatherControllerTests
 {
     private readonly Mock<IWeatherProvider> _weatherProvider;
-    private readonly Mock<ILogger> _logger;
+    private readonly Mock<ILogger<WeatherControllerV1>> _logger;
     private readonly IValidator<GetCurrentWeatherQuery> _currentWeatherValidator;
     private readonly IValidator<GetAverageWeatherQuery> _averageWeatherValidator;
 
     public WeatherControllerTests()
     {
         _weatherProvider = new Mock<IWeatherProvider>();
-        _logger = new Mock<ILogger>();
+        _logger = new Mock<ILogger<WeatherControllerV1>>();
         _currentWeatherValidator = new GetCurrentWeatherQueryValidator();
         _averageWeatherValidator = new GetAverageWeatherQueryValidator();
     }

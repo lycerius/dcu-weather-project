@@ -1,19 +1,27 @@
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using Common.Models;
+using Microsoft.Extensions.Logging;
+using WeatherCli.Services.WeatherAuthService;
 
 namespace WeatherCli.Services.WeatherService;
 
 public class WeatherService : IWeatherService
 {
     private readonly HttpClient _httpClient;
+    private readonly IWeatherAuthService _weatherAuthService;
+    private readonly ILogger<WeatherService> _logger;
 
-    public WeatherService(HttpClient httpClient)
+    public WeatherService(IHttpClientFactory httpClientFactory, IWeatherAuthService weatherAuthService, ILogger<WeatherService> logger)
     {
-        _httpClient = httpClient;
+        _logger = logger;
+        _weatherAuthService = weatherAuthService;
+        _httpClient = httpClientFactory.CreateClient("weatherClient");
     }
 
     public async Task<CurrentWeather?> GetCurrentWeatherForZipCode(string zipCode, TemperatureUnit temperatureUnit)
     {
+        await EnsureAuthenticated();
         var urlToCall = $"v1/Weather/Current/{zipCode}?units={temperatureUnit}";
         try
         {
@@ -21,13 +29,14 @@ public class WeatherService : IWeatherService
         }
         catch (HttpRequestException ex)
         {
-            Console.WriteLine($"Error fetching current weather: {ex.Message}");
+            _logger.LogError(ex, $"Error fetching current weather: {ex.Message}");
             return null;
         }
     }
 
     public async Task<AverageWeather?> GetAverageWeather(string zipCode, TemperatureUnit temperatureUnit, int timePeriodDays)
     {
+        await EnsureAuthenticated();
         var urlToCall = $"v1/Weather/Average/{zipCode}?units={temperatureUnit}&timePeriod={timePeriodDays}";
         try
         {
@@ -35,8 +44,14 @@ public class WeatherService : IWeatherService
         }
         catch (HttpRequestException ex)
         {
-            Console.WriteLine($"Error fetching average weather: {ex.Message}");
+            _logger.LogError(ex, $"Error fetching average weather: {ex.Message}");
             return null;
         }
+    }
+
+    private async Task EnsureAuthenticated()
+    {
+        var token = await _weatherAuthService.GetBearerToken() ?? throw new UnauthorizedAccessException("User is not authenticated. Please log in first.");
+        _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token.AccessToken);
     }
 }

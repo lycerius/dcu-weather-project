@@ -1,7 +1,9 @@
-﻿using System.Net.Http.Headers;
-using System.Text.Json;
+﻿using System.Text.Json;
 using CommandLine;
 using Common.Models;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using WeatherCli.Services.CredentialStorage;
 using WeatherCli.Services.WeatherAuthService;
 using WeatherCli.Services.WeatherService;
@@ -24,6 +26,8 @@ public class Program
         public required string Protocol { get; set; }
         [Option(Default = 5000, HelpText = "The port to use when calling the weather api")]
         public required int Port { get; set; }
+        [Option(Default = LogLevel.Error, HelpText = "The minimum log level to use (Trace|Debug|Information|Warning|Error|Critical)")]
+        public required LogLevel LogLevel { get; set; }
     }
 
     public abstract class BaseWeatherOptions : BaseOptions
@@ -72,16 +76,48 @@ public class Program
 
     public static async Task Main(string[] args)
     {
+        var builder = Host.CreateApplicationBuilder(args);
+        builder.Services.AddSingleton<ICredentialStorage, FileCredentialStorage>();
+        builder.Services.AddSingleton<IWeatherAuthService, WeatherAuthService>();
+        builder.Services.AddSingleton<IWeatherService, WeatherService>();
+
         await Parser.Default.ParseArguments<RegisterUserOptions, LoginUserOptions, GetCurrentWeatherOptions, GetAverageWeatherOptions>(args)
-        .WithParsedAsync<RegisterUserOptions>(RegisterUser).Result
-        .WithParsedAsync<LoginUserOptions>(LoginUser).Result
-        .WithParsedAsync<GetCurrentWeatherOptions>(GetCurrentWeather).Result
-        .WithParsedAsync<GetAverageWeatherOptions>(GetAverageWeather);
+            .WithParsed<BaseOptions>(opts => BaseOptionsSetup(opts, builder))
+            .WithParsedAsync<RegisterUserOptions>(async opts =>
+            {
+                await RegisterUser(opts, builder);
+            }).Result
+            .WithParsedAsync<LoginUserOptions>(async opts =>
+            {
+                await LoginUser(opts, builder);
+            }).Result
+            .WithParsedAsync<GetCurrentWeatherOptions>(async opts =>
+            {
+                await GetCurrentWeather(opts, builder);
+            }).Result
+            .WithParsedAsync<GetAverageWeatherOptions>(async opts =>
+            {
+                await GetAverageWeather(opts, builder);
+            });
     }
 
-    private static async Task RegisterUser(RegisterUserOptions options)
+    private static void BaseOptionsSetup(BaseOptions options, HostApplicationBuilder builder)
     {
-        var authService = GenerateAuthService(options);
+        builder.Services.AddHttpClient("weatherClient", client =>
+        {
+            client.BaseAddress = new Uri($"{options.Protocol}://{options.Host}:{options.Port}");
+        });
+
+        builder.Services.AddLogging(opt =>
+        {
+            opt.SetMinimumLevel(options.LogLevel);
+        });
+    }
+
+    private static async Task RegisterUser(RegisterUserOptions options, HostApplicationBuilder builder)
+    {
+        var host = builder.Build();
+        var authService = host.Services.GetRequiredService<IWeatherAuthService>();
         var success = await authService.RegisterUser(options.Email, options.Password);
         if (success)
         {
@@ -93,9 +129,10 @@ public class Program
         }
     }
 
-    private static async Task LoginUser(LoginUserOptions options)
+    private static async Task LoginUser(LoginUserOptions options, HostApplicationBuilder builder)
     {
-        var authService = GenerateAuthService(options);
+        var host = builder.Build();
+        var authService = host.Services.GetRequiredService<IWeatherAuthService>();
         var success = await authService.LoginUser(options.Email, options.Password);
         if (success)
         {
@@ -107,54 +144,20 @@ public class Program
         }
     }
 
-    private static async Task GetCurrentWeather(GetCurrentWeatherOptions options)
+    private static async Task GetCurrentWeather(GetCurrentWeatherOptions options, HostApplicationBuilder builder)
     {
-        var dcuWeatherService = await GenerateWeatherService(options);
+        var host = builder.Build();
+        var dcuWeatherService = host.Services.GetRequiredService<IWeatherService>();
         var results = await dcuWeatherService.GetCurrentWeatherForZipCode(options.ZipCode, options.TemperatureUnit);
         PrintResultsInSpecifiedOutput(results, options);
     }
 
-    private static async Task GetAverageWeather(GetAverageWeatherOptions options)
+    private static async Task GetAverageWeather(GetAverageWeatherOptions options, HostApplicationBuilder builder)
     {
-        var dcuWeatherService = await GenerateWeatherService(options);
+        var host = builder.Build();
+        var dcuWeatherService = host.Services.GetRequiredService<IWeatherService>();
         var results = await dcuWeatherService.GetAverageWeather(options.ZipCode, options.TemperatureUnit, options.TimePeriod);
         PrintResultsInSpecifiedOutput(results, options);
-    }
-
-    private static async Task<IWeatherService> GenerateWeatherService(BaseOptions options)
-    {
-        var authService = GenerateAuthService(options);
-        var authToken = await authService.GetBearerToken();
-
-        if (authToken == null)
-        {
-            Console.WriteLine("Failed to retrieve authentication token. Either credentials are invalid or you need to log in first.");
-            Environment.Exit(-1);
-        }
-
-        authToken = await authService.RefreshToken(authToken);
-        if (authToken == null)
-        {
-            Console.WriteLine("Failed to refresh authentication token. Please log in again.");
-            Environment.Exit(-1);
-        }
-
-
-        var httpClient = new HttpClient
-        {
-            BaseAddress = new Uri($"{options.Protocol}://{options.Host}:{options.Port}")
-        };
-        httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", authToken.AccessToken);
-
-        return new WeatherService(httpClient);
-    }
-
-    private static WeatherAuthService GenerateAuthService(BaseOptions options)
-    {
-        return new WeatherAuthService(new HttpClient
-        {
-            BaseAddress = new Uri($"{options.Protocol}://{options.Host}:{options.Port}")
-        }, new FileCredentialStorage());
     }
 
     private static void PrintResultsInSpecifiedOutput(object? toPrint, BaseWeatherOptions options)
@@ -162,7 +165,7 @@ public class Program
         switch (options.Output)
         {
             case OutputFormat.JSON:
-                Console.WriteLine(JsonSerializer.Serialize(toPrint));
+                Console.WriteLine(JsonSerializer.Serialize(toPrint, new JsonSerializerOptions { WriteIndented = true }));
                 break;
             case OutputFormat.YAML:
                 Console.WriteLine(new SerializerBuilder().WithNamingConvention(CamelCaseNamingConvention.Instance).Build().Serialize(toPrint));
