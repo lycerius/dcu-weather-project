@@ -1,4 +1,5 @@
 using Common.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using WeatherService.Services;
 
@@ -6,6 +7,7 @@ namespace WeatherService.Controllers;
 
 [ApiController]
 [Route("[controller]")]
+[Authorize]
 public class WeatherController : ControllerBase
 {
     private readonly IWeatherProvider _weatherProvider;
