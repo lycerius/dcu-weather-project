@@ -10,6 +10,9 @@ A .NET 9.0 solution for retrieving current and average weather data by ZIP code,
 - [Prerequisites](#prerequisites)
 - [Running the Web API Locally](#running-the-web-api-locally)
 - [Running the Web API via Docker](#running-the-web-api-via-docker)
+- [Authentication](#authentication)
+  - [Registering and Logging In](#registering-and-logging-in)
+  - [How Authentication Works](#how-authentication-works)
 - [Using the CLI](#using-the-cli)
   - [CLI Usage Examples](#cli-usage-examples)
 - [Configuration](#configuration)
@@ -89,6 +92,44 @@ A root-level `Dockerfile` is provided for building and running the API container
 
 ---
 
+## Authentication
+
+The DCU Weather API requires authentication for most endpoints. The CLI provides commands to register and log in, storing your credentials securely for future requests.
+
+### Registering and Logging In
+
+Before using weather commands, you must register and log in:
+
+#### Register a New User
+
+```sh
+dotnet run --project WeatherCli -- register-user --email your@email.com --password yourpassword
+```
+
+#### Log In
+
+```sh
+dotnet run --project WeatherCli -- login-user --email your@email.com --password yourpassword
+```
+
+If login is successful, your authentication token will be saved locally for future CLI requests.
+
+### How Authentication Works
+
+- **Credential Storage:**  
+  After a successful login, your authentication tokens are stored in a file named `.credentials.txt` in the `WeatherCli` directory.
+- **File Format:**  
+  The file contains a JSON object with your access and refresh tokens.
+- **Usage:**  
+  The CLI automatically reads this file and attaches your bearer token to all API requests.
+- **Token Refresh:**  
+  If your access token expires, the CLI will attempt to refresh it using the refresh token stored in `.credentials.txt`.
+
+**Note:**  
+Keep your `.credentials.txt` file secure. If you wish to log out, simply delete this file.
+
+---
+
 ## Using the CLI
 
 The CLI allows you to fetch weather data from the API and output it in text, JSON, or YAML.
@@ -108,11 +149,14 @@ dotnet run --project WeatherCli -- [command] [options]
 
 #### CLI Commands
 
+- `register-user`  
+  Register a new user account.
+- `login-user`  
+  Log in and store your authentication token.
 - `get-current-weather`  
-  Fetches current weather for a ZIP code.
-
+  Fetches current weather for a ZIP code (requires authentication).
 - `get-average-weather`  
-  Fetches average weather for a ZIP code over a period (2-5 days).
+  Fetches average weather for a ZIP code over a period (2-5 days, requires authentication).
 
 #### Common Options
 
@@ -122,9 +166,9 @@ dotnet run --project WeatherCli -- [command] [options]
   The protocol (`http` or `https`).
 - `--port` (default: `5000`)  
   The API port.
-- `--zipcode` (required)  
+- `--zipcode` (required for weather commands)  
   The ZIP code to query.
-- `--units` (required)  
+- `--units` (required for weather commands)  
   Temperature units: `celsius` or `fahrenheit`.
 - `--output` (default: `text`)  
   Output format: `text`, `json`, or `yaml`.
@@ -137,6 +181,13 @@ dotnet run --project WeatherCli -- [command] [options]
 ---
 
 ### CLI Usage Examples
+
+**Register and log in:**
+
+```sh
+dotnet run --project WeatherCli -- register-user --email alice@example.com --password secret
+dotnet run --project WeatherCli -- login-user --email alice@example.com --password secret
+```
 
 **Get current weather in Celsius for ZIP 90210:**
 
@@ -184,6 +235,7 @@ dotnet test
 
 - The CLI supports output in text, JSON, and YAML for easy integration.
 - For development, you can use the included `launchSettings.json` or Docker for isolated runs.
+- Authentication is required for weather queries; register and log in before using weather commands.
 
 ---
 
