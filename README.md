@@ -305,5 +305,3 @@ dotnet test
 - All endpoints return HTTP 400 for invalid input or not found, and HTTP 500 for general errors.
 
 ---
-
-**Contributions and issues are welcome! Please use the GitHub repository for tracking and discussions.**
