@@ -21,30 +21,26 @@ public class WeatherService : IWeatherService
 
     public async Task<CurrentWeather?> GetCurrentWeatherForZipCode(string zipCode, TemperatureUnit temperatureUnit)
     {
-        await EnsureAuthenticated();
         var urlToCall = $"v1/Weather/Current/{zipCode}?units={temperatureUnit}";
-        try
-        {
-            return await _httpClient.GetFromJsonAsync<CurrentWeather>(urlToCall);
-        }
-        catch (HttpRequestException ex)
-        {
-            _logger.LogError(ex, $"Error fetching current weather: {ex.Message}");
-            return null;
-        }
+        return await GetFromWeatherApi<CurrentWeather>(urlToCall, "Error fetching current weather");
     }
 
     public async Task<AverageWeather?> GetAverageWeather(string zipCode, TemperatureUnit temperatureUnit, int timePeriodDays)
     {
-        await EnsureAuthenticated();
         var urlToCall = $"v1/Weather/Average/{zipCode}?units={temperatureUnit}&timePeriod={timePeriodDays}";
+        return await GetFromWeatherApi<AverageWeather>(urlToCall, "Error fetching average weather");
+    }
+
+    private async Task<T?> GetFromWeatherApi<T>(string url, string errorMessage) where T : class
+    {
+        await EnsureAuthenticated();
         try
         {
-            return await _httpClient.GetFromJsonAsync<AverageWeather>(urlToCall);
+            return await _httpClient.GetFromJsonAsync<T>(url);
         }
         catch (HttpRequestException ex)
         {
-            _logger.LogError(ex, $"Error fetching average weather: {ex.Message}");
+            _logger.LogError(ex, $"{errorMessage}: {ex.Message}");
             return null;
         }
     }

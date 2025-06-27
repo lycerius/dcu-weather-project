@@ -1,13 +1,12 @@
-using System;
 using Common.Models;
-using Moq;
 using WeatherService.Services;
-using Xunit;
 
 namespace WeatherService.Tests;
 
 public class TemperatureUnitsConverterTest
 {
+    private TemperatureUnitsConverter CreateConverter() => new TemperatureUnitsConverter();
+
     [Theory]
     [InlineData(273.15, TemperatureUnit.C, 0.0)]
     [InlineData(300.15, TemperatureUnit.C, 27.0)]
@@ -16,7 +15,7 @@ public class TemperatureUnitsConverterTest
     public void ConvertKelvinToUnits_ShouldConvertCorrectly(double kelvin, TemperatureUnit unit, double expected)
     {
         // Arrange
-        var converter = new TemperatureUnitsConverter();
+        var converter = CreateConverter();
 
         // Act
         var result = converter.ConvertKelvinToUnits(kelvin, unit);
@@ -29,7 +28,7 @@ public class TemperatureUnitsConverterTest
     public void ConvertKelvinToUnits_ShouldThrowException_OnUnknownUnit()
     {
         // Arrange
-        var converter = new TemperatureUnitsConverter();
+        var converter = CreateConverter();
 
         // Act & Assert
         var ex = Assert.Throws<NotSupportedException>(() => converter.ConvertKelvinToUnits(273.15, (TemperatureUnit)999));

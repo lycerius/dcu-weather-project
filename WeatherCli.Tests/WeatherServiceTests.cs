@@ -8,6 +8,7 @@ using System.Net.Mime;
 using WeatherCli.Services.WeatherService;
 using WeatherCli.Services.WeatherAuthService;
 using Microsoft.Extensions.Logging;
+using WeatherCli.Models;
 
 namespace WeatherCli.Tests;
 
@@ -16,6 +17,7 @@ public class WeatherServiceTests
     private readonly Mock<HttpMessageHandler> _httpClientHandler;
     private readonly HttpClient _httpClient;
     private readonly Mock<ILogger<WeatherService>> _logger;
+    private readonly Mock<IWeatherAuthService> _weatherAuthServiceMock;
 
     public WeatherServiceTests()
     {
@@ -25,6 +27,51 @@ public class WeatherServiceTests
             BaseAddress = new Uri("https://localhost:1234")
         };
         _logger = new Mock<ILogger<WeatherService>>();
+        _weatherAuthServiceMock = new Mock<IWeatherAuthService>();
+        _weatherAuthServiceMock
+            .Setup(s => s.GetBearerToken())
+            .ReturnsAsync(new AuthToken { AccessToken = "token", RefreshToken = "refresh" });
+    }
+
+    private WeatherService CreateService()
+    {
+        var httpClientFactoryMock = new Mock<IHttpClientFactory>();
+        httpClientFactoryMock.Setup(f => f.CreateClient(It.IsAny<string>())).Returns(_httpClient);
+        return new WeatherService(httpClientFactoryMock.Object, _weatherAuthServiceMock.Object, _logger.Object);
+    }
+
+    private void SetupHttpGet(string url, HttpStatusCode statusCode, string? content = null)
+    {
+        _httpClientHandler
+            .Protected()
+            .Setup<Task<HttpResponseMessage>>(
+                "SendAsync",
+                ItExpr.Is<HttpRequestMessage>(req =>
+                    req.Method == HttpMethod.Get &&
+                    req.RequestUri != null &&
+                    req.RequestUri.ToString().Equals(url)
+                ),
+                ItExpr.IsAny<CancellationToken>()
+            )
+            .ReturnsAsync(new HttpResponseMessage
+            {
+                StatusCode = statusCode,
+                Content = content != null ? new StringContent(content, Encoding.UTF8, MediaTypeNames.Application.Json) : null
+            });
+    }
+
+    private void VerifyHttpGet(string url)
+    {
+        _httpClientHandler.Protected().Verify(
+            "SendAsync",
+            Times.Once(),
+            ItExpr.Is<HttpRequestMessage>(req =>
+                req.Method == HttpMethod.Get &&
+                req.RequestUri != null &&
+                req.RequestUri.ToString().Equals(url)
+            ),
+            ItExpr.IsAny<CancellationToken>()
+        );
     }
 
     [Fact]
@@ -40,28 +87,10 @@ public class WeatherServiceTests
             RainPossibleToday = true
         };
         var json = JsonSerializer.Serialize(expected);
+        var url = "https://localhost:1234/v1/Weather/Current/90210?units=C";
+        SetupHttpGet(url, HttpStatusCode.OK, json);
 
-        _httpClientHandler
-            .Protected()
-            .Setup<Task<HttpResponseMessage>>(
-                "SendAsync",
-                ItExpr.Is<HttpRequestMessage>(req =>
-                    req.Method == HttpMethod.Get &&
-                    req.RequestUri != null &&
-                    req.RequestUri.ToString().Equals("https://localhost:1234/Weather/Current/90210?units=C")
-                ),
-                ItExpr.IsAny<CancellationToken>()
-            )
-            .ReturnsAsync(new HttpResponseMessage
-            {
-                StatusCode = HttpStatusCode.OK,
-                Content = new StringContent(json, Encoding.UTF8, MediaTypeNames.Application.Json)
-            });
-
-        var httpClientFactoryMock = new Mock<IHttpClientFactory>();
-        httpClientFactoryMock.Setup(f => f.CreateClient(It.IsAny<string>())).Returns(_httpClient);
-        var weatherAuthServiceMock = new Mock<IWeatherAuthService>();
-        var service = new WeatherService(httpClientFactoryMock.Object, weatherAuthServiceMock.Object, _logger.Object);
+        var service = CreateService();
 
         // Act
         var result = await service.GetCurrentWeatherForZipCode("90210", TemperatureUnit.C);
@@ -75,42 +104,17 @@ public class WeatherServiceTests
         Assert.Equal(expected.RainPossibleToday, result.RainPossibleToday);
 
         // Verify
-        _httpClientHandler.Protected().Verify(
-            "SendAsync",
-            Times.Once(),
-            ItExpr.Is<HttpRequestMessage>(req =>
-                req.Method == HttpMethod.Get &&
-                req.RequestUri != null &&
-                req.RequestUri.ToString().Equals("https://localhost:1234/Weather/Current/90210?units=C")
-            ),
-            ItExpr.IsAny<CancellationToken>()
-        );
+        VerifyHttpGet(url);
     }
 
     [Fact]
     public async Task GetCurrentWeatherForZipCode_ShouldReturnNull_WhenApiReturnsNotFound()
     {
         // Arrange
-        _httpClientHandler
-            .Protected()
-            .Setup<Task<HttpResponseMessage>>(
-                "SendAsync",
-                ItExpr.Is<HttpRequestMessage>(req =>
-                    req.Method == HttpMethod.Get &&
-                    req.RequestUri != null &&
-                    req.RequestUri.ToString().Equals("https://localhost:1234/Weather/Current/00000?units=F")
-                ),
-                ItExpr.IsAny<CancellationToken>()
-            )
-            .ReturnsAsync(new HttpResponseMessage
-            {
-                StatusCode = HttpStatusCode.NotFound
-            });
+        var url = "https://localhost:1234/v1/Weather/Current/00000?units=F";
+        SetupHttpGet(url, HttpStatusCode.NotFound);
 
-        var httpClientFactoryMock = new Mock<IHttpClientFactory>();
-        httpClientFactoryMock.Setup(f => f.CreateClient(It.IsAny<string>())).Returns(_httpClient);
-        var weatherAuthServiceMock = new Mock<IWeatherAuthService>();
-        var service = new WeatherService(httpClientFactoryMock.Object, weatherAuthServiceMock.Object, _logger.Object);
+        var service = CreateService();
 
         // Act
         var result = await service.GetCurrentWeatherForZipCode("00000", TemperatureUnit.F);
@@ -119,16 +123,7 @@ public class WeatherServiceTests
         Assert.Null(result);
 
         // Verify
-        _httpClientHandler.Protected().Verify(
-            "SendAsync",
-            Times.Once(),
-            ItExpr.Is<HttpRequestMessage>(req =>
-                req.Method == HttpMethod.Get &&
-                req.RequestUri != null &&
-                req.RequestUri.ToString().Equals("https://localhost:1234/Weather/Current/00000?units=F")
-            ),
-            ItExpr.IsAny<CancellationToken>()
-        );
+        VerifyHttpGet(url);
     }
 
     [Fact]
@@ -144,28 +139,10 @@ public class WeatherServiceTests
             RainPossibleInPeriod = false
         };
         var json = JsonSerializer.Serialize(expected);
+        var url = "https://localhost:1234/v1/Weather/Average/90210?units=F&timePeriod=7";
+        SetupHttpGet(url, HttpStatusCode.OK, json);
 
-        _httpClientHandler
-            .Protected()
-            .Setup<Task<HttpResponseMessage>>(
-                "SendAsync",
-                ItExpr.Is<HttpRequestMessage>(req =>
-                    req.Method == HttpMethod.Get &&
-                    req.RequestUri != null &&
-                    req.RequestUri.ToString().Equals("https://localhost:1234/Weather/Average/90210?units=F&timePeriod=7")
-                ),
-                ItExpr.IsAny<CancellationToken>()
-            )
-            .ReturnsAsync(new HttpResponseMessage
-            {
-                StatusCode = HttpStatusCode.OK,
-                Content = new StringContent(json, Encoding.UTF8, MediaTypeNames.Application.Json)
-            });
-
-        var httpClientFactoryMock = new Mock<IHttpClientFactory>();
-        httpClientFactoryMock.Setup(f => f.CreateClient(It.IsAny<string>())).Returns(_httpClient);
-        var weatherAuthServiceMock = new Mock<IWeatherAuthService>();
-        var service = new WeatherService(httpClientFactoryMock.Object, weatherAuthServiceMock.Object, _logger.Object);
+        var service = CreateService();
 
         // Act
         var result = await service.GetAverageWeather("90210", TemperatureUnit.F, 7);
@@ -179,42 +156,17 @@ public class WeatherServiceTests
         Assert.Equal(expected.RainPossibleInPeriod, result.RainPossibleInPeriod);
 
         // Verify
-        _httpClientHandler.Protected().Verify(
-            "SendAsync",
-            Times.Once(),
-            ItExpr.Is<HttpRequestMessage>(req =>
-                req.Method == HttpMethod.Get &&
-                req.RequestUri != null &&
-                req.RequestUri.ToString().Equals("https://localhost:1234/Weather/Average/90210?units=F&timePeriod=7")
-            ),
-            ItExpr.IsAny<CancellationToken>()
-        );
+        VerifyHttpGet(url);
     }
 
     [Fact]
     public async Task GetAverageWeather_ShouldReturnNull_WhenApiReturnsNotFound()
     {
         // Arrange
-        _httpClientHandler
-            .Protected()
-            .Setup<Task<HttpResponseMessage>>(
-                "SendAsync",
-                ItExpr.Is<HttpRequestMessage>(req =>
-                    req.Method == HttpMethod.Get &&
-                    req.RequestUri != null &&
-                    req.RequestUri.ToString().Equals("https://localhost:1234/Weather/Average/00000?units=C&timePeriod=3")
-                ),
-                ItExpr.IsAny<CancellationToken>()
-            )
-            .ReturnsAsync(new HttpResponseMessage
-            {
-                StatusCode = HttpStatusCode.NotFound
-            });
+        var url = "https://localhost:1234/v1/Weather/Average/00000?units=C&timePeriod=3";
+        SetupHttpGet(url, HttpStatusCode.NotFound);
 
-        var httpClientFactoryMock = new Mock<IHttpClientFactory>();
-        httpClientFactoryMock.Setup(f => f.CreateClient(It.IsAny<string>())).Returns(_httpClient);
-        var weatherAuthServiceMock = new Mock<IWeatherAuthService>();
-        var service = new WeatherService(httpClientFactoryMock.Object, weatherAuthServiceMock.Object, _logger.Object);
+        var service = CreateService();
 
         // Act
         var result = await service.GetAverageWeather("00000", TemperatureUnit.C, 3);
@@ -223,16 +175,7 @@ public class WeatherServiceTests
         Assert.Null(result);
 
         // Verify
-        _httpClientHandler.Protected().Verify(
-            "SendAsync",
-            Times.Once(),
-            ItExpr.Is<HttpRequestMessage>(req =>
-                req.Method == HttpMethod.Get &&
-                req.RequestUri != null &&
-                req.RequestUri.ToString().Equals("https://localhost:1234/Weather/Average/00000?units=C&timePeriod=3")
-            ),
-            ItExpr.IsAny<CancellationToken>()
-        );
+        VerifyHttpGet(url);
     }
 
     [Fact]
@@ -248,10 +191,7 @@ public class WeatherServiceTests
             )
             .ThrowsAsync(new HttpRequestException("Network error"));
 
-        var httpClientFactoryMock = new Mock<IHttpClientFactory>();
-        httpClientFactoryMock.Setup(f => f.CreateClient(It.IsAny<string>())).Returns(_httpClient);
-        var weatherAuthServiceMock = new Mock<IWeatherAuthService>();
-        var service = new WeatherService(httpClientFactoryMock.Object, weatherAuthServiceMock.Object, _logger.Object);
+        var service = CreateService();
 
         // Act
         var result = await service.GetCurrentWeatherForZipCode("90210", TemperatureUnit.C);
@@ -273,10 +213,7 @@ public class WeatherServiceTests
             )
             .ThrowsAsync(new HttpRequestException("Network error"));
 
-        var httpClientFactoryMock = new Mock<IHttpClientFactory>();
-        httpClientFactoryMock.Setup(f => f.CreateClient(It.IsAny<string>())).Returns(_httpClient);
-        var weatherAuthServiceMock = new Mock<IWeatherAuthService>();
-        var service = new WeatherService(httpClientFactoryMock.Object, weatherAuthServiceMock.Object, _logger.Object);
+        var service = CreateService();
 
         // Act
         var result = await service.GetAverageWeather("90210", TemperatureUnit.C, 3);

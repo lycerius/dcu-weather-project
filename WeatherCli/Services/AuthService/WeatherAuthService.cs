@@ -20,13 +20,7 @@ public class WeatherAuthService : IWeatherAuthService
 
     public async Task<bool> RegisterUser(string email, string password)
     {
-        var response = await _httpClient.PostAsJsonAsync("register", new { Email = email, Password = password });
-        if (response.IsSuccessStatusCode)
-        {
-            return true;
-        }
-        _logger.LogError($"Error registering user: {response.StatusCode}.\n{await response.Content.ReadAsStringAsync()}");
-        return false;
+        return await PostAndLogResult("register", new { Email = email, Password = password }, "registering user");
     }
 
     public async Task<bool> LoginUser(string email, string password)
@@ -40,7 +34,7 @@ public class WeatherAuthService : IWeatherAuthService
                 _credentialStorage.SaveToken(authToken);
             return true;
         }
-        _logger.LogError($"Error logging in user: {response.StatusCode}.\n{await response.Content.ReadAsStringAsync()}");
+        await LogErrorResponse(response, "logging in user");
         return false;
     }
 
@@ -66,7 +60,23 @@ public class WeatherAuthService : IWeatherAuthService
             return newAuthToken;
         }
 
-        _logger.LogError($"Error refreshing token: {response.StatusCode}.\n{await response.Content.ReadAsStringAsync()}");
+        await LogErrorResponse(response, "refreshing token");
         return null;
+    }
+
+    private async Task<bool> PostAndLogResult(string endpoint, object payload, string action)
+    {
+        var response = await _httpClient.PostAsJsonAsync(endpoint, payload);
+        if (response.IsSuccessStatusCode)
+            return true;
+
+        await LogErrorResponse(response, action);
+        return false;
+    }
+
+    private async Task LogErrorResponse(HttpResponseMessage response, string action)
+    {
+        var content = await response.Content.ReadAsStringAsync();
+        _logger.LogError($"Error {action}: {response.StatusCode}.\n{content}");
     }
 }

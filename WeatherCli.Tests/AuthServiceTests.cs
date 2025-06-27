@@ -32,10 +32,11 @@ public class AuthServiceTests
         _logger = new Mock<ILogger<WeatherAuthService>>();
     }
 
-    [Fact]
-    public async Task RegisterUser_ShouldReturnTrue_OnSuccess()
+    private WeatherAuthService CreateService()
+        => new WeatherAuthService(_httpClientFactory.Object, _credentialStorage.Object, _logger.Object);
+
+    private void SetupHttpPost(string endpoint, HttpStatusCode statusCode, object? content = null)
     {
-        // Arrange
         _httpClientHandler
             .Protected()
             .Setup<Task<HttpResponseMessage>>(
@@ -43,68 +44,62 @@ public class AuthServiceTests
                 ItExpr.Is<HttpRequestMessage>(req =>
                     req.Method == HttpMethod.Post &&
                     req.RequestUri != null &&
-                    req.RequestUri.ToString().EndsWith("/register")
+                    req.RequestUri.ToString().EndsWith(endpoint)
                 ),
                 ItExpr.IsAny<CancellationToken>()
             )
-            .ReturnsAsync(new HttpResponseMessage(HttpStatusCode.OK));
+            .ReturnsAsync(new HttpResponseMessage(statusCode)
+            {
+                Content = content != null
+                    ? new StringContent(JsonSerializer.Serialize(content), Encoding.UTF8, MediaTypeNames.Application.Json)
+                    : null
+            });
+    }
 
-        var service = new WeatherAuthService(_httpClientFactory.Object, _credentialStorage.Object, _logger.Object);
-
-        // Act
-        var result = await service.RegisterUser("test@example.com", "password");
-
-        // Assert
-        Assert.True(result);
-
-        // Verify
+    private void VerifyHttpPost(string endpoint)
+    {
         _httpClientHandler.Protected().Verify(
             "SendAsync",
             Times.Once(),
             ItExpr.Is<HttpRequestMessage>(req =>
                 req.Method == HttpMethod.Post &&
                 req.RequestUri != null &&
-                req.RequestUri.ToString().EndsWith("/register")
+                req.RequestUri.ToString().EndsWith(endpoint)
             ),
             ItExpr.IsAny<CancellationToken>()
         );
     }
 
     [Fact]
+    public async Task RegisterUser_ShouldReturnTrue_OnSuccess()
+    {
+        // Arrange
+        SetupHttpPost("/register", HttpStatusCode.OK);
+
+        var service = CreateService();
+
+        // Act
+        var result = await service.RegisterUser("test@example.com", "password");
+
+        // Assert
+        Assert.True(result);
+        VerifyHttpPost("/register");
+    }
+
+    [Fact]
     public async Task RegisterUser_ShouldReturnFalse_OnFailure()
     {
         // Arrange
-        _httpClientHandler
-            .Protected()
-            .Setup<Task<HttpResponseMessage>>(
-                "SendAsync",
-                ItExpr.IsAny<HttpRequestMessage>(),
-                ItExpr.IsAny<CancellationToken>()
-            )
-            .ReturnsAsync(new HttpResponseMessage(HttpStatusCode.BadRequest)
-            {
-                Content = new StringContent("fail", Encoding.UTF8, MediaTypeNames.Text.Plain)
-            });
+        SetupHttpPost("/register", HttpStatusCode.BadRequest, "fail");
 
-        var service = new WeatherAuthService(_httpClientFactory.Object, _credentialStorage.Object, _logger.Object);
+        var service = CreateService();
 
         // Act
         var result = await service.RegisterUser("fail@example.com", "password");
 
         // Assert
         Assert.False(result);
-
-        // Verify
-        _httpClientHandler.Protected().Verify(
-            "SendAsync",
-            Times.Once(),
-            ItExpr.Is<HttpRequestMessage>(req =>
-                req.Method == HttpMethod.Post &&
-                req.RequestUri != null &&
-                req.RequestUri.ToString().EndsWith("/register")
-            ),
-            ItExpr.IsAny<CancellationToken>()
-        );
+        VerifyHttpPost("/register");
     }
 
     [Fact]
@@ -112,25 +107,9 @@ public class AuthServiceTests
     {
         // Arrange
         var authToken = new AuthToken { AccessToken = "abc", RefreshToken = "def" };
-        var json = JsonSerializer.Serialize(authToken);
+        SetupHttpPost("/login", HttpStatusCode.OK, authToken);
 
-        _httpClientHandler
-            .Protected()
-            .Setup<Task<HttpResponseMessage>>(
-                "SendAsync",
-                ItExpr.Is<HttpRequestMessage>(req =>
-                    req.Method == HttpMethod.Post &&
-                    req.RequestUri != null &&
-                    req.RequestUri.ToString().EndsWith("/login")
-                ),
-                ItExpr.IsAny<CancellationToken>()
-            )
-            .ReturnsAsync(new HttpResponseMessage(HttpStatusCode.OK)
-            {
-                Content = new StringContent(json, Encoding.UTF8, MediaTypeNames.Application.Json)
-            });
-
-        var service = new WeatherAuthService(_httpClientFactory.Object, _credentialStorage.Object, _logger.Object);
+        var service = CreateService();
 
         _credentialStorage.Setup(s => s.ClearToken());
         _credentialStorage.Setup(s => s.SaveToken(It.IsAny<AuthToken>()));
@@ -142,37 +121,16 @@ public class AuthServiceTests
         Assert.True(result);
         _credentialStorage.Verify(s => s.ClearToken(), Times.Once());
         _credentialStorage.Verify(s => s.SaveToken(It.Is<AuthToken>(t => t.AccessToken == "abc" && t.RefreshToken == "def")), Times.Once());
-
-        // Verify HTTP
-        _httpClientHandler.Protected().Verify(
-            "SendAsync",
-            Times.Once(),
-            ItExpr.Is<HttpRequestMessage>(req =>
-                req.Method == HttpMethod.Post &&
-                req.RequestUri != null &&
-                req.RequestUri.ToString().EndsWith("/login")
-            ),
-            ItExpr.IsAny<CancellationToken>()
-        );
+        VerifyHttpPost("/login");
     }
 
     [Fact]
     public async Task LoginUser_ShouldReturnFalse_OnFailure()
     {
         // Arrange
-        _httpClientHandler
-            .Protected()
-            .Setup<Task<HttpResponseMessage>>(
-                "SendAsync",
-                ItExpr.IsAny<HttpRequestMessage>(),
-                ItExpr.IsAny<CancellationToken>()
-            )
-            .ReturnsAsync(new HttpResponseMessage(HttpStatusCode.Unauthorized)
-            {
-                Content = new StringContent("fail", Encoding.UTF8, MediaTypeNames.Text.Plain)
-            });
+        SetupHttpPost("/login", HttpStatusCode.Unauthorized, "fail");
 
-        var service = new WeatherAuthService(_httpClientFactory.Object, _credentialStorage.Object, _logger.Object);
+        var service = CreateService();
 
         _credentialStorage.Setup(s => s.ClearToken());
 
@@ -183,18 +141,7 @@ public class AuthServiceTests
         Assert.False(result);
         _credentialStorage.Verify(s => s.ClearToken(), Times.Once());
         _credentialStorage.Verify(s => s.SaveToken(It.IsAny<AuthToken>()), Times.Never());
-
-        // Verify HTTP
-        _httpClientHandler.Protected().Verify(
-            "SendAsync",
-            Times.Once(),
-            ItExpr.Is<HttpRequestMessage>(req =>
-                req.Method == HttpMethod.Post &&
-                req.RequestUri != null &&
-                req.RequestUri.ToString().EndsWith("/login")
-            ),
-            ItExpr.IsAny<CancellationToken>()
-        );
+        VerifyHttpPost("/login");
     }
 
     [Fact]
@@ -203,8 +150,9 @@ public class AuthServiceTests
         // Arrange
         var authToken = new AuthToken { AccessToken = "abc", RefreshToken = "def" };
         _credentialStorage.Setup(s => s.GetToken()).Returns(authToken);
+        SetupHttpPost("/refresh", HttpStatusCode.OK, authToken);
 
-        var service = new WeatherAuthService(_httpClientFactory.Object, _credentialStorage.Object, _logger.Object);
+        var service = CreateService();
 
         // Act
         var result = await service.GetBearerToken();
@@ -214,6 +162,7 @@ public class AuthServiceTests
         Assert.Equal(authToken.AccessToken, result!.AccessToken);
         Assert.Equal(authToken.RefreshToken, result.RefreshToken);
         _credentialStorage.Verify(s => s.GetToken(), Times.Once());
+        VerifyHttpPost("/refresh");
     }
 
     [Fact]
@@ -222,7 +171,7 @@ public class AuthServiceTests
         // Arrange
         _credentialStorage.Setup(s => s.GetToken()).Returns((AuthToken?)null);
 
-        var service = new WeatherAuthService(_httpClientFactory.Object, _credentialStorage.Object, _logger.Object);
+        var service = CreateService();
 
         // Act
         var result = await service.GetBearerToken();
@@ -238,27 +187,11 @@ public class AuthServiceTests
         // Arrange
         var oldToken = new AuthToken { AccessToken = "old", RefreshToken = "refresh" };
         var newToken = new AuthToken { AccessToken = "new", RefreshToken = "refresh2" };
-        var json = JsonSerializer.Serialize(newToken);
-
-        _httpClientHandler
-            .Protected()
-            .Setup<Task<HttpResponseMessage>>(
-                "SendAsync",
-                ItExpr.Is<HttpRequestMessage>(req =>
-                    req.Method == HttpMethod.Post &&
-                    req.RequestUri != null &&
-                    req.RequestUri.ToString().EndsWith("/refresh")
-                ),
-                ItExpr.IsAny<CancellationToken>()
-            )
-            .ReturnsAsync(new HttpResponseMessage(HttpStatusCode.OK)
-            {
-                Content = new StringContent(json, Encoding.UTF8, MediaTypeNames.Application.Json)
-            });
+        SetupHttpPost("/refresh", HttpStatusCode.OK, newToken);
 
         _credentialStorage.Setup(s => s.SaveToken(It.IsAny<AuthToken>()));
 
-        var service = new WeatherAuthService(_httpClientFactory.Object, _credentialStorage.Object, _logger.Object);
+        var service = CreateService();
 
         // Act
         var result = await service.RefreshToken(oldToken);
@@ -268,18 +201,7 @@ public class AuthServiceTests
         Assert.Equal(newToken.AccessToken, result!.AccessToken);
         Assert.Equal(newToken.RefreshToken, result.RefreshToken);
         _credentialStorage.Verify(s => s.SaveToken(It.Is<AuthToken>(t => t.AccessToken == "new" && t.RefreshToken == "refresh2")), Times.Once());
-
-        // Verify HTTP
-        _httpClientHandler.Protected().Verify(
-            "SendAsync",
-            Times.Once(),
-            ItExpr.Is<HttpRequestMessage>(req =>
-                req.Method == HttpMethod.Post &&
-                req.RequestUri != null &&
-                req.RequestUri.ToString().EndsWith("/refresh")
-            ),
-            ItExpr.IsAny<CancellationToken>()
-        );
+        VerifyHttpPost("/refresh");
     }
 
     [Fact]
@@ -287,20 +209,9 @@ public class AuthServiceTests
     {
         // Arrange
         var oldToken = new AuthToken { AccessToken = "old", RefreshToken = "refresh" };
+        SetupHttpPost("/refresh", HttpStatusCode.BadRequest, "fail");
 
-        _httpClientHandler
-            .Protected()
-            .Setup<Task<HttpResponseMessage>>(
-                "SendAsync",
-                ItExpr.IsAny<HttpRequestMessage>(),
-                ItExpr.IsAny<CancellationToken>()
-            )
-            .ReturnsAsync(new HttpResponseMessage(HttpStatusCode.BadRequest)
-            {
-                Content = new StringContent("fail", Encoding.UTF8, MediaTypeNames.Text.Plain)
-            });
-
-        var service = new WeatherAuthService(_httpClientFactory.Object, _credentialStorage.Object, _logger.Object);
+        var service = CreateService();
 
         // Act
         var result = await service.RefreshToken(oldToken);
@@ -308,17 +219,6 @@ public class AuthServiceTests
         // Assert
         Assert.Null(result);
         _credentialStorage.Verify(s => s.SaveToken(It.IsAny<AuthToken>()), Times.Never());
-
-        // Verify HTTP
-        _httpClientHandler.Protected().Verify(
-            "SendAsync",
-            Times.Once(),
-            ItExpr.Is<HttpRequestMessage>(req =>
-                req.Method == HttpMethod.Post &&
-                req.RequestUri != null &&
-                req.RequestUri.ToString().EndsWith("/refresh")
-            ),
-            ItExpr.IsAny<CancellationToken>()
-        );
+        VerifyHttpPost("/refresh");
     }
 }
