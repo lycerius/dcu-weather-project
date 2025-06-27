@@ -42,7 +42,7 @@ public class OpenWeatherWeatherProvider : IWeatherProvider
     public async Task<AverageWeather?> GetAverageWeatherForZipCode(string zip, int timePeriod, TemperatureUnit tempUnit)
     {
         if (timePeriod < Constants.MinTimePeroid || timePeriod > Constants.MaxTimePeroid)
-            throw new WeatherProviderException($"Invalid time period specified. Please use a value between {Constants.MinTimePeroid} and {Constants.MaxTimePeroid}.");
+            return null;
 
         var weatherResult = await GetOpenWeatherResultForZipCode(zip);
 

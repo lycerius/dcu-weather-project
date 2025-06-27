@@ -106,7 +106,7 @@ public class OpenWeatherWeatherProviderTests
         );
     }
 
-    private void VerifyWeatherRequest(string lat, string lon, Times times)
+    private void VerifyWeatherRequest(double lat, double lon, Times times)
     {
         _httpClientHandler.Protected().Verify(
             "SendAsync",
@@ -173,7 +173,7 @@ public class OpenWeatherWeatherProviderTests
         Assert.True(expected.Equals(result));
 
         VerifyGeoCodeRequest(zip, Times.Once());
-        VerifyWeatherRequest(lat.ToString(), lon.ToString(), Times.Once());
+        VerifyWeatherRequest(lat, lon, Times.Once());
         _temperatureUnitsConverter.Verify(c => c.ConvertKelvinToUnits(kelvin, TemperatureUnit.C), Times.AtLeastOnce());
     }
 
@@ -217,7 +217,7 @@ public class OpenWeatherWeatherProviderTests
         // Assert
         Assert.Null(result);
         VerifyGeoCodeRequest(zip, Times.Once());
-        VerifyWeatherRequest(lat.ToString(), lon.ToString(), Times.Once());
+        VerifyWeatherRequest(lat, lon, Times.Once());
     }
 
     [Fact]
@@ -282,7 +282,7 @@ public class OpenWeatherWeatherProviderTests
         Assert.False(result.RainPossibleToday);
 
         VerifyGeoCodeRequest(zip, Times.Once());
-        VerifyWeatherRequest(lat.ToString(), lon.ToString(), Times.Once());
+        VerifyWeatherRequest(lat, lon, Times.Once());
         _temperatureUnitsConverter.Verify(c => c.ConvertKelvinToUnits(kelvin, TemperatureUnit.C), Times.AtLeastOnce());
     }
 
@@ -536,7 +536,7 @@ public class OpenWeatherWeatherProviderTests
         );
 
         // Verify that the weather request was made
-        VerifyWeatherRequest(lat.ToString(), lon.ToString(), Times.Once());
+        VerifyWeatherRequest(lat, lon, Times.Once());
     }
 
     [Fact]
@@ -566,7 +566,7 @@ public class OpenWeatherWeatherProviderTests
 
         // Verify
         VerifyGeoCodeRequest(zip, Times.AtLeast(1));
-        VerifyWeatherRequest(lat.ToString(), lon.ToString(), Times.AtLeast(1));
+        VerifyWeatherRequest(lat, lon, Times.AtLeast(1));
     }
 
     [Fact]
@@ -661,7 +661,8 @@ public class OpenWeatherWeatherProviderTests
         // The implementation should return null for out-of-range timePeriod
         Assert.Null(result);
 
-        // Verify that the geocode request was made
-        VerifyGeoCodeRequest(zip, Times.Once());
+
+        VerifyGeoCodeRequest(zip, Times.Never());
+        VerifyWeatherRequest(lon, lon, Times.Never());
     }
 }
