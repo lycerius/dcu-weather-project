@@ -97,11 +97,7 @@ public class WeatherServiceTests
 
         // Assert
         Assert.NotNull(result);
-        Assert.Equal(expected.Lat, result.Lat);
-        Assert.Equal(expected.Long, result.Long);
-        Assert.Equal(expected.CurrentTemperature, result.CurrentTemperature);
-        Assert.Equal(expected.Unit, result.Unit);
-        Assert.Equal(expected.RainPossibleToday, result.RainPossibleToday);
+        Assert.True(expected.Equals(result));
 
         // Verify
         VerifyHttpGet(url);
@@ -149,11 +145,7 @@ public class WeatherServiceTests
 
         // Assert
         Assert.NotNull(result);
-        Assert.Equal(expected.Lat, result.Lat);
-        Assert.Equal(expected.Lon, result.Lon);
-        Assert.Equal(expected.AverageTemperature, result.AverageTemperature);
-        Assert.Equal(expected.Unit, result.Unit);
-        Assert.Equal(expected.RainPossibleInPeriod, result.RainPossibleInPeriod);
+        Assert.True(expected.Equals(result));
 
         // Verify
         VerifyHttpGet(url);

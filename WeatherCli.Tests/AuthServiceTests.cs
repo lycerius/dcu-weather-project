@@ -159,8 +159,7 @@ public class AuthServiceTests
 
         // Assert
         Assert.NotNull(result);
-        Assert.Equal(authToken.AccessToken, result!.AccessToken);
-        Assert.Equal(authToken.RefreshToken, result.RefreshToken);
+        Assert.True(authToken.Equals(result));
         _credentialStorage.Verify(s => s.GetToken(), Times.Once());
         VerifyHttpPost("/refresh");
     }
@@ -198,8 +197,7 @@ public class AuthServiceTests
 
         // Assert
         Assert.NotNull(result);
-        Assert.Equal(newToken.AccessToken, result!.AccessToken);
-        Assert.Equal(newToken.RefreshToken, result.RefreshToken);
+        Assert.True(newToken.Equals(result));
         _credentialStorage.Verify(s => s.SaveToken(It.Is<AuthToken>(t => t.AccessToken == "new" && t.RefreshToken == "refresh2")), Times.Once());
         VerifyHttpPost("/refresh");
     }

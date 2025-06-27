@@ -2,6 +2,7 @@ using Common.Models;
 using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using WeatherService.Models;
 using WeatherService.Services.WeatherProviders;
 
 namespace WeatherService.Controllers;
@@ -80,47 +81,5 @@ public class WeatherControllerV1 : ControllerBase
             _logger.LogError(e, errorMessage, logFormatingArgs);
             return StatusCode(StatusCodes.Status500InternalServerError);
         }
-    }
-}
-
-// Query DTOs and Validators (place in appropriate files in production)
-public class GetCurrentWeatherQuery
-{
-    public string ZipCode { get; set; } = default!;
-    public TemperatureUnit Units { get; set; }
-}
-
-public class GetAverageWeatherQuery
-{
-    public string ZipCode { get; set; } = default!;
-    public string TimePeriod { get; set; } = default!;
-    public TemperatureUnit Units { get; set; }
-}
-
-public class GetCurrentWeatherQueryValidator : AbstractValidator<GetCurrentWeatherQuery>
-{
-    public GetCurrentWeatherQueryValidator()
-    {
-        RuleFor(x => x.ZipCode)
-            .NotEmpty().WithMessage("Zip code is required.")
-            .Matches(@"^\d{5}$").WithMessage("Zip code must be a 5-digit number.");
-        RuleFor(x => x.Units)
-            .IsInEnum().WithMessage("Units must be a valid temperature unit.");
-    }
-}
-
-public class GetAverageWeatherQueryValidator : AbstractValidator<GetAverageWeatherQuery>
-{
-    public GetAverageWeatherQueryValidator()
-    {
-        RuleFor(x => x.ZipCode)
-            .NotEmpty().WithMessage("Zip code is required.")
-            .Matches(@"^\d{5}$").WithMessage("Zip code must be a 5-digit number.");
-        RuleFor(x => x.TimePeriod)
-            .NotEmpty().WithMessage("Time period is required.")
-            .Must(tp => int.TryParse(tp, out var n) && n >= 2 && n <= 5)
-            .WithMessage("Time period must be an integer between 2 and 5.");
-        RuleFor(x => x.Units)
-            .IsInEnum().WithMessage("Units must be a valid temperature unit.");
     }
 }

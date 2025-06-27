@@ -155,16 +155,21 @@ public class OpenWeatherWeatherProviderTests
 
         var provider = CreateProvider();
 
+        var expected = new CurrentWeather
+        {
+            Lat = lat,
+            Long = lon,
+            CurrentTemperature = expectedTemp,
+            Unit = TemperatureUnit.C,
+            RainPossibleToday = false
+        };
+
         // Act
         var result = await provider.GetCurrentWeatherForZipCode(zip, TemperatureUnit.C);
 
         // Assert
         Assert.NotNull(result);
-        Assert.Equal(expectedTemp, result.CurrentTemperature);
-        Assert.Equal(lat, result.Lat);
-        Assert.Equal(lon, result.Long);
-        Assert.Equal(TemperatureUnit.C, result.Unit);
-        Assert.False(result.RainPossibleToday);
+        Assert.True(expected.Equals(result));
 
         VerifyGeoCodeRequest(zip, Times.Once());
         VerifyWeatherRequest(lat.ToString(), lon.ToString(), Times.Once());
@@ -320,16 +325,21 @@ public class OpenWeatherWeatherProviderTests
 
         var provider = CreateProvider();
 
+        var expected = new AverageWeather
+        {
+            Lat = lat,
+            Lon = lon,
+            AverageTemperature = 22.0,
+            Unit = TemperatureUnit.C,
+            RainPossibleInPeriod = true
+        };
+
         // Act
         var result = await provider.GetAverageWeatherForZipCode(zip, 2, TemperatureUnit.C);
 
         // Assert
         Assert.NotNull(result);
-        Assert.Equal(lat, result.Lat);
-        Assert.Equal(lon, result.Lon);
-        Assert.Equal(22.0, result.AverageTemperature);
-        Assert.True(result.RainPossibleInPeriod);
-        Assert.Equal(TemperatureUnit.C, result.Unit);
+        Assert.True(expected.Equals(result));
 
         VerifyGeoCodeRequest(zip, Times.AtLeast(1));
         _temperatureUnitsConverter.Verify(c => c.ConvertKelvinToUnits(It.IsAny<double>(), TemperatureUnit.C), Times.AtLeastOnce());
@@ -497,16 +507,21 @@ public class OpenWeatherWeatherProviderTests
 
         var provider = CreateProvider();
 
+        var expected = new CurrentWeather
+        {
+            Lat = lat,
+            Long = lon,
+            CurrentTemperature = expectedTemp,
+            Unit = TemperatureUnit.C,
+            RainPossibleToday = false
+        };
+
         // Act
         var result = await provider.GetCurrentWeatherForZipCode(zip, TemperatureUnit.C);
 
         // Assert
         Assert.NotNull(result);
-        Assert.Equal(expectedTemp, result.CurrentTemperature);
-        Assert.Equal(lat, result.Lat);
-        Assert.Equal(lon, result.Long);
-        Assert.Equal(TemperatureUnit.C, result.Unit);
-        Assert.False(result.RainPossibleToday);
+        Assert.True(expected.Equals(result));
 
         // Verify that the geocode request was not made since it was cached
         _httpClientHandler.Protected().Verify(

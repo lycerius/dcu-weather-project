@@ -3,7 +3,8 @@ using FluentValidation;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
-using WeatherService.Controllers; // For the query/validator types
+using WeatherService.Controllers.Validators;
+using WeatherService.Models;
 using WeatherService.Services;
 using WeatherService.Services.WeatherProviders;
 using WeatherService.Services.WeatherProviders.OpenWeather;

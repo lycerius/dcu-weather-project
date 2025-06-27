@@ -10,6 +10,7 @@ A .NET 9.0 solution for retrieving current and average weather data by ZIP code,
 - [Prerequisites](#prerequisites)
 - [Running the Web API Locally](#running-the-web-api-locally)
 - [Running the Web API via Docker](#running-the-web-api-via-docker)
+- [API Endpoints](#api-endpoints)
 - [Authentication](#authentication)
   - [Registering and Logging In](#registering-and-logging-in)
   - [How Authentication Works](#how-authentication-works)
@@ -28,6 +29,8 @@ dcu-weather-project/
 ├── Common/                # Shared models and enums
 ├── WeatherService/        # ASP.NET Core Web API
 ├── WeatherCli/            # .NET CLI for weather queries
+├── WeatherService.Tests/  # Unit tests for API and providers
+├── WeatherCli.Tests/      # Unit tests for CLI and auth
 ├── Dockerfile             # Dockerfile for building the API container
 ```
 
@@ -63,13 +66,6 @@ dcu-weather-project/
 
    The API will be available at `http://localhost:5000` (or as specified in `launchSettings.json`).
 
-3. **API Endpoints**
-
-   - `GET /weather/current/{zipCode}?units={C|F}`  
-     Returns current weather for the given ZIP code.
-   - `GET /weather/average/{zipCode}?units={C|F}&timePeriod={2-5}`  
-     Returns average weather for the given ZIP code and period (2-5 days).
-
 ---
 
 ## Running the Web API via Docker
@@ -92,9 +88,45 @@ A root-level `Dockerfile` is provided for building and running the API container
 
 ---
 
+## API Endpoints
+
+All endpoints require authentication (see [Authentication](#authentication)).
+
+- **GET /v1/Weather/Current/{zipCode}?units={C|F}**
+  - Returns current weather for the given ZIP code.
+  - Returns HTTP 400 for invalid input or not found, HTTP 500 for general errors.
+
+  **Example Response:**
+  ```json
+  {
+    "currentTemperature": 60,
+    "unit": "F",
+    "lat": 45.67,
+    "lon": 54.36,
+    "rainPossibleToday": true
+  }
+  ```
+
+- **GET /v1/Weather/Average/{zipCode}?units={C|F}&timePeriod={2-5}**
+  - Returns average weather for the given ZIP code and period (2-5 days).
+  - Returns HTTP 400 for invalid input, not found, or out-of-range timePeriod; HTTP 500 for general errors.
+
+  **Example Response:**
+  ```json
+  {
+    "averageTemperature": 60,
+    "unit": "F",
+    "lat": 45.67,
+    "lon": 54.36,
+    "rainPossibleInPeriod": true
+  }
+  ```
+
+---
+
 ## Authentication
 
-The DCU Weather API requires authentication for most endpoints. The CLI provides commands to register and log in, storing your credentials securely for future requests.
+The DCU Weather API requires authentication for all weather endpoints. The CLI provides commands to register and log in, storing your credentials for future requests.
 
 ### Registering and Logging In
 
@@ -221,8 +253,6 @@ dotnet run --project WeatherCli -- get-current-weather --zipcode 90210 --units c
 
 ## Testing
 
-Both the API and CLI have unit tests.
-
 To run all tests:
 
 ```sh
@@ -236,7 +266,11 @@ dotnet test
 - The CLI supports output in text, JSON, and YAML for easy integration.
 - For development, you can use the included `launchSettings.json` or Docker for isolated runs.
 - Authentication is required for weather queries; register and log in before using weather commands.
+- `.credentials.txt` is not encrypted by default, but the code is structured for future secure storage.
+- All endpoints return HTTP 400 for invalid input or not found, and HTTP 500 for general errors.
 
 ---
+
+
 
 **Contributions and issues are welcome! Please use the GitHub repository for tracking and discussions.**
