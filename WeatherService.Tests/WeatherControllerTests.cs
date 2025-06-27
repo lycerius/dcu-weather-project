@@ -239,11 +239,10 @@ public class WeatherControllerTests
         _currentWeatherValidator
             .Setup(v => v.ValidateAsync(It.IsAny<GetCurrentWeatherQuery>(), default))
             .ReturnsAsync(new FluentValidation.Results.ValidationResult(
-                new[]
-                {
+                [
                     new FluentValidation.Results.ValidationFailure("ZipCode", "Zip code is required."),
                     new FluentValidation.Results.ValidationFailure("Units", "Units must be a valid temperature unit.")
-                }
+                ]
             ));
 
         var controller = CreateController();

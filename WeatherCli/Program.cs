@@ -1,5 +1,6 @@
 ﻿using System.Text.Json;
 using CommandLine;
+using Common;
 using Common.Models;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -38,11 +39,6 @@ public class Program
         public required OutputFormat Output { get; set; }
         [Option(Required = true, HelpText = "The temperature units the weather should be in (fahrenheit|celsius)")]
         public required string Units { get; set; }
-
-        public TemperatureUnit TemperatureUnit
-        {
-            get => ConvertUnitInputOptionToTemperatureUnit(Units);
-        }
     }
 
     [Verb("register-user", HelpText = "Registers a new user")]
@@ -146,18 +142,41 @@ public class Program
 
     private static async Task GetCurrentWeather(GetCurrentWeatherOptions options, HostApplicationBuilder builder)
     {
+        var temperatureUnit = ConvertUnitInputOptionToTemperatureUnit(options.Units);
+        ValidateTemperatureUnit(temperatureUnit);
         var host = builder.Build();
         var dcuWeatherService = host.Services.GetRequiredService<IWeatherService>();
-        var results = await dcuWeatherService.GetCurrentWeatherForZipCode(options.ZipCode, options.TemperatureUnit);
+        var results = await dcuWeatherService.GetCurrentWeatherForZipCode(options.ZipCode, (TemperatureUnit)temperatureUnit);
         PrintResultsInSpecifiedOutput(results, options);
     }
 
     private static async Task GetAverageWeather(GetAverageWeatherOptions options, HostApplicationBuilder builder)
     {
+        var temperatureUnit = ConvertUnitInputOptionToTemperatureUnit(options.Units);
+        ValidateTemperatureUnit(temperatureUnit);
+        ValidateTimePeriod(options.TimePeriod);
         var host = builder.Build();
         var dcuWeatherService = host.Services.GetRequiredService<IWeatherService>();
-        var results = await dcuWeatherService.GetAverageWeather(options.ZipCode, options.TemperatureUnit, options.TimePeriod);
+        var results = await dcuWeatherService.GetAverageWeather(options.ZipCode, (TemperatureUnit)temperatureUnit, options.TimePeriod);
         PrintResultsInSpecifiedOutput(results, options);
+    }
+
+    private static void ValidateTemperatureUnit(TemperatureUnit? temperatureUnit)
+    {
+        if (temperatureUnit == null)
+        {
+            Console.WriteLine("Invalid temperature unit specified. Please use 'fahrenheit' or 'celsius'.");
+            Environment.Exit(-1);
+        }
+    }
+
+    private static void ValidateTimePeriod(int timePeriod)
+    {
+        if (timePeriod < Constants.MinTimePeroid || timePeriod > Constants.MaxTimePeroid)
+        {
+            Console.WriteLine($"Invalid time period specified. Please use a value between {Constants.MinTimePeroid} and {Constants.MaxTimePeroid}.");
+            Environment.Exit(-1);
+        }
     }
 
     private static void PrintResultsInSpecifiedOutput(object? toPrint, BaseWeatherOptions options)
@@ -176,13 +195,13 @@ public class Program
         }
     }
 
-    private static TemperatureUnit ConvertUnitInputOptionToTemperatureUnit(string inputOption)
+    private static TemperatureUnit? ConvertUnitInputOptionToTemperatureUnit(string inputOption)
     {
-        return inputOption?.ToLower() switch
+        return (inputOption?.ToLower()) switch
         {
-            "fahrenheit" => TemperatureUnit.F,
-            "celsius" => TemperatureUnit.C,
-            _ => throw new NotSupportedException($"The given input temperature unit is not supported: {inputOption}")
+            "fahrenheit" => (TemperatureUnit?)TemperatureUnit.F,
+            "celsius" => (TemperatureUnit?)TemperatureUnit.C,
+            _ => null,
         };
     }
 }

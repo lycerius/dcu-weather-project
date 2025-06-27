@@ -4,6 +4,7 @@ using System.Net;
 using System.Net.Mime;
 using System.Text;
 using System.Text.Json;
+using Common;
 using Common.Models;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
@@ -616,5 +617,51 @@ public class OpenWeatherWeatherProviderTests
             ItExpr.IsAny<HttpRequestMessage>(),
             ItExpr.IsAny<CancellationToken>()
         );
+    }
+
+    [Theory]
+    [InlineData(Constants.MinTimePeroid - 1)] // less than minimum
+    [InlineData(Constants.MaxTimePeroid + 1)] // greater than maximum
+    public async Task GetAverageWeatherForZipCode_ShouldReturnNull_WhenTimePeriodIsOutOfRange(int timePeriod)
+    {
+        var zip = "12345";
+        var lat = 40.7128;
+        var lon = -74.0060;
+
+        SetupGeoCode(zip, new GeocodeResult
+        {
+            Country = "US",
+            Name = "Test City",
+            Lat = lat,
+            Lon = lon
+        });
+
+        // Provide a valid weather result, but the provider should not use it due to invalid timePeriod
+        SetupWeather(new OpenWeatherResult
+        {
+            Lat = lat,
+            Lon = lon,
+            Current = new CurrentWeatherReport { Dt = DateTimeOffset.UtcNow.ToUnixTimeSeconds(), Temp = 295.15 },
+            Daily = [
+                new ()
+                {
+                    Dt = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+                    Rain = 1.0,
+                    Temp = new Temperature { Day = 295.15, Eve = 293.15, Morn = 290.15, Night = 292.15 }
+                }
+            ]
+        });
+
+        var provider = CreateProvider();
+
+        // Act
+        var result = await provider.GetAverageWeatherForZipCode(zip, timePeriod, TemperatureUnit.C);
+
+        // Assert
+        // The implementation should return null for out-of-range timePeriod
+        Assert.Null(result);
+
+        // Verify that the geocode request was made
+        VerifyGeoCodeRequest(zip, Times.Once());
     }
 }

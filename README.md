@@ -16,6 +16,7 @@ A .NET 9.0 solution for retrieving current and average weather data by ZIP code,
   - [How Authentication Works](#how-authentication-works)
 - [Using the CLI](#using-the-cli)
   - [CLI Usage Examples](#cli-usage-examples)
+  - [Example CLI Error Messages](#example-cli-error-messages)
 - [Configuration](#configuration)
 - [Testing](#testing)
 - [Notes](#notes)
@@ -241,6 +242,40 @@ dotnet run --project WeatherCli -- get-current-weather --zipcode 90210 --units c
 
 ---
 
+### Example CLI Error Messages
+
+**Invalid ZIP code:**
+```
+Zip code must be a 5-digit number.
+```
+
+**Invalid time period:**
+```
+Invalid time period specified. Please use a value between 2 and 5.
+```
+
+**Invalid units:**
+```
+Invalid temperature unit specified. Please use 'fahrenheit' or 'celsius'.
+```
+
+**Authentication required:**
+```
+User is not authenticated. Please log in first.
+```
+
+**API returns not found:**
+```
+No weather data found for the specified ZIP code.
+```
+
+**General error:**
+```
+Error fetching current weather: [error details]
+```
+
+---
+
 ## Configuration
 
 - **API Key:**  
@@ -270,7 +305,5 @@ dotnet test
 - All endpoints return HTTP 400 for invalid input or not found, and HTTP 500 for general errors.
 
 ---
-
-
 
 **Contributions and issues are welcome! Please use the GitHub repository for tracking and discussions.**

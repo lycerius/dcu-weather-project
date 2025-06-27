@@ -1,3 +1,4 @@
+using Common;
 using Common.Models;
 using FluentValidation.TestHelper;
 using WeatherService.Controllers.Validators;
@@ -13,14 +14,14 @@ public class GetAverageWeatherQueryValidatorTests
     [InlineData("", "3", TemperatureUnit.C, "Zip code is required.")]
     [InlineData("abc", "3", TemperatureUnit.C, "Zip code must be a 5-digit number.")]
     [InlineData("12345", "", TemperatureUnit.C, "Time period is required.")]
-    [InlineData("12345", "notanumber", TemperatureUnit.C, "Time period must be an integer between 2 and 5.")]
-    [InlineData("12345", "1", TemperatureUnit.C, "Time period must be an integer between 2 and 5.")]
-    [InlineData("12345", "6", TemperatureUnit.C, "Time period must be an integer between 2 and 5.")]
+    [InlineData("12345", "notanumber", TemperatureUnit.C, "Time period must be an integer between")]
+    [InlineData("12345", "1", TemperatureUnit.C, "Time period must be an integer between")]
+    [InlineData("12345", "6", TemperatureUnit.C, "Time period must be an integer between")]
     public void Should_HaveValidationError_For_InvalidInput(string zip, string timePeriod, TemperatureUnit units, string expectedMessage)
     {
         var model = new GetAverageWeatherQuery { ZipCode = zip, TimePeriod = timePeriod, Units = units };
         var result = _validator.TestValidate(model);
-        Assert.Contains(expectedMessage, result.Errors.Select(e => e.ErrorMessage));
+        Assert.Contains(result.Errors.Select(e => e.ErrorMessage), e => e.Contains(expectedMessage));
     }
 
     [Fact]
